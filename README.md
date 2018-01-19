@@ -1,8 +1,7 @@
-# `cortex-m-quickstart`
+# `CANUST rust CAN API`
 
-> A template for building applications for ARM Cortex-M microcontrollers
+> a API for building CAN applications in rust for the stm32 board.
 
-# [Documentation](https://docs.rs/cortex-m-quickstart)
 
 # License
 
