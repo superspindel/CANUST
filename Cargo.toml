@@ -1,0 +1,26 @@
+[package]
+authors = ["Viktor Fällman <vikfll-0@student.ltu.se>"]
+categories = ["embedded", "no-std"]
+description = "A CAN bus API for the Nucleo STM32F042K6T6"
+keywords = ["arm", "cortex-m", "can"]
+name = "canust"
+repository = "https://github.com/superspindel/CANUST"
+version = "0.1.0"
+
+[dependencies]
+cortex-m-semihosting = "0.2.0"
+cortex-m = "0.3.1"
+cortex-m-rtfm = "0.2.2"
+
+[dependencies.cortex-m-rt]
+features = ["abort-on-panic"]
+version = "0.3.3"
+
+[dependencies.stm32f0x]
+path = "stm32f0x"
+version = "0.1.0"
+features = ["rt"]
+
+[profile.release]
+debug = true
+lto = true
