@@ -1,0 +1,508 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Debug",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv6em-none-eabi/debug/canust",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Release",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/release/app",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "loop",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/loop",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "gpio",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/gpio",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "gpio_raw",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/gpio_raw",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare0",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare0",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare1",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare1",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare2",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare2",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare3",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare3",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare4",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare4",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare5",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare5",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare6",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare6",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare0 Release",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/release/examples/bare0",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "bare2 Release",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/release/examples/bare2",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 64000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset init"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "usart_dma_tx",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/usart_dma_tx",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 16000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "usart_dma_rx",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/usart_dma_rx",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 16000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "usart_loopback",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/usart_loopback",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 16000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "pwm",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/pwm",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 16000000",
+                "monitor itm port 0 on",
+                "load",
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "gdb",
+            "request": "attach",
+            "name": "clk_out_itm",
+            "gdbpath": "/usr/bin/arm-none-eabi-gdb",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/clk_out_itm",
+            "target": ":3333",
+            "remote": true,
+            "autorun": [
+                "monitor reset init",
+                "monitor arm semihosting enable",
+                "monitor tpiu config internal /tmp/itm.log uart off 16000000",
+                "monitor itm port 0 on",
+                "load",
+                "monitor reset"
+            ],
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "name": "c bare1",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare1",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "postLaunchCommands": [
+                "monitor arm semihosting enable"
+            ],
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 16000000,
+                "swoFrequency": 2000000,
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "Name",
+                        "port": 0
+                    }
+                ]
+            },
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "name": "Testar",
+            "executable": "./target/thumbv6m-none-eabi/debug/canust",
+            "configFiles": [
+                "interface/stlink-v2.cfg",
+                "target/stm32f0x.cfg"
+            ],
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 48000000,
+                "swoFrequency": 2000000, // you may try 1000000 if not working
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "Name",
+                        "port": 0
+                    }
+                ]
+            },
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "name": "c bare6 64Mhz",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare6",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "postLaunchCommands": [
+                "monitor reset init"
+            ],
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 64000000,
+                "swoFrequency": 2000000, // you may try 1000000 if not working
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "Name",
+                        "port": 0
+                    }
+                ]
+            },
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "name": "c bare6 84Mhz",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare6",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "postLaunchCommands": [
+                "monitor reset init"
+            ],
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 84000000,
+                "swoFrequency": 2000000, // you may try 1000000 if not working
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "Name",
+                        "port": 0
+                    }
+                ]
+            },
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "name": "c bare7 16Mhz",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare7",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 16000000,
+                "swoFrequency": 2000000, // you may try 1000000 if not working
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "Name",
+                        "port": 0
+                    }
+                ]
+            },
+            "cwd": "${workspaceRoot}"
+        },
+        {
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "name": "c bare8 16Mhz",
+            "executable": "./target/thumbv7em-none-eabihf/debug/examples/bare8",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 16000000,
+                "swoFrequency": 2000000, // you may try 1000000 if not working
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "Name",
+                        "port": 0
+                    }
+                ]
+            },
+            "cwd": "${workspaceRoot}"
+        }
+    ]
+}

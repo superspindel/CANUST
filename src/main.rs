@@ -17,15 +17,10 @@ app! {
         static ON: bool = true;
     },
     tasks: {
-        USART2:
-        {
-            path: loopback,
-            resources: [USART2, GPIOB, ON]
-        },
         TIM2:
         {
             path: test_timer,
-            resources: [GPIOB, ON, TIM2, USART2]
+            resources: [CAN, ON, TIM2, USART2]
         },
         CEC_CAN:
         {
@@ -38,38 +33,23 @@ app! {
 fn init(p: init::Peripherals, _r: init::Resources)
 {
     p.SYST.set_clock_source(SystClkSource::Core);
-    p.SYST.set_reload(8000000);
+    p.SYST.set_reload(4000000);
     p.SYST.enable_counter();
 
-    p.RCC.ahbenr.modify(|_, w| w.iopben().set_bit());
     p.RCC.ahbenr.modify(|_, w| w.iopaen().set_bit());
     p.RCC.apb1enr.modify(|_, w| w.tim2en().set_bit());
-    p.RCC.apb1enr.write(|w| w.usart2en().set_bit());
-
-    p.GPIOB.moder.modify(|_, w| unsafe { w.moder3().bits(1 as u8) });
-    p.GPIOB.odr.modify(|_, w| w.odr3().bit(true));
-
     let cnt_value_tim2: u32 = 250000;
     unsafe {
     p.TIM2.arr.write(|w| w.bits(cnt_value_tim2));
     }
-    let psc_value_tim2: u16 = 32;
+    let psc_value_tim2: u16 = 16;
     unsafe {
     p.TIM2.psc.write(|w| w.psc().bits(psc_value_tim2));
     }
-
     p.TIM2.dier.write(|w| w.uie().set_bit());
     p.TIM2.egr.write(|w| w.ug().set_bit());
-    p.TIM2.cr1.write(|w| w.cen().bit(true));
+    p.TIM2.cr1.write(|w| w.cen().set_bit());
     p.TIM2.cr1.write(|w| w.arpe().set_bit());
-
-    p.GPIOA.moder.modify(|_, w| unsafe { w.moder2().bits(2).moder15().bits(2) });
-    p.GPIOA.afrl.write(|w| unsafe { w.afrl2().bits(1) });
-    p.GPIOA.afrh.write(|w| unsafe { w.afrh15().bits(1) });
-    p.USART2.cr1.write(|w| w.ue().set_bit().te().set_bit().re().set_bit().rxneie().set_bit());
-    let baud = 8000000 / 115200;
-    p.USART2.brr.write(|w| unsafe { w.bits(baud) });
-
 
     /* Initialize CAN:
     - set INRQ bit in MCR
@@ -98,19 +78,50 @@ fn init(p: init::Peripherals, _r: init::Resources)
 
     After SLEEP bit is cleared, sleep mode is exited once bxCAN has synchronized with the CAN bus. When the SLAK bit has been cleared by hardware.
     */
+    unsafe {
+    p.GPIOA.moder.write(|w| w.moder11().bits(2));
+    p.GPIOA.moder.write(|w| w.moder12().bits(2));
+
+    p.GPIOA.otyper.write(|w| w.ot11().clear_bit());
+    p.GPIOA.otyper.write(|w| w.ot12().clear_bit());
+
+    p.GPIOA.pupdr.write(|w| w.pupdr11().bits(1));
+    p.GPIOA.pupdr.write(|w| w.pupdr12().bits(1));
+
+    p.GPIOA.ospeedr.write(|w| w.ospeedr11().bits(0));
+    p.GPIOA.ospeedr.write(|w| w.ospeedr12().bits(0));
+
+    p.GPIOA.afrh.write(|w| w.afrh11().bits(4));
+    p.GPIOA.afrh.write(|w| w.afrh12().bits(4));
+
+    p.RCC.apb1enr.write(|w| w.canen().set_bit());
 
     p.CAN.can_mcr.write(|w| w.inrq().set_bit());
-    while !(p.CAN.can_msr.read().inak().bit_is_set())
+    }
+    while (p.CAN.can_msr.read().inak().bit_is_clear())
     {
         // wait for bxCAN to enter intialization state
     }
+    unsafe {
     p.CAN.can_mcr.write(|w| w.sleep().clear_bit());
-    p.CAN.can_btr.write(|w| unsafe { w.ts2().bits(2 as u8) });
-    p.CAN.can_btr.write(|w| unsafe { w.ts1().bits(3 as u8) });
-    p.CAN.can_btr.write(|w| unsafe { w.brp().bits(5 as u16) });
+    p.CAN.can_mcr.write(|w| w.reset().set_bit());
+    p.CAN.can_mcr.write(|w| w.awum().set_bit());
+    }
+    /*
+    p.CAN.can_btr.write(|w| w.bits(0x00140016));
+    p.CAN.can_btr.write(|w| w.sjw().bits(3));
+
+    //p.CAN.can_btr.write(|w| w.lbkm().set_bit());
+    }
+    */
+    
+    p.CAN.can_btr.write(|w| unsafe { w.lbkm().set_bit().ts2().bits(2 as u8).ts1().bits(3 as u8).brp().bits(5 as u16) });
+    unsafe {
+    p.CAN.can_btr.write(|w| w.sjw().bits(2));
+    }
 
     p.CAN.can_mcr.write(|w| w.inrq().clear_bit());
-    while !(p.CAN.can_msr.read().inak().bit_is_clear())
+    while (p.CAN.can_msr.read().inak().bit_is_set())
     {
         // wait for bxCAN to enter intialization state
     }
@@ -118,7 +129,7 @@ fn init(p: init::Peripherals, _r: init::Resources)
     p.CAN.can_fa1r.write(|w| w.fact0().set_bit());
     p.CAN.f0r1.write(|w| unsafe { w.bits(0xFF700010 as u32) });
     p.CAN.can_fmr.write(|w| w.finit().clear_bit());
-    p.CAN.can_ier.write(|w| w.fmpie0().set_bit());
+    p.CAN.can_ier.write(|w| w.fmpie0().set_bit().wkuie().set_bit().fmpie1().set_bit().epvie().set_bit());
 
 }
 
@@ -129,48 +140,6 @@ fn idle() -> !
     }
 }
 
-fn loopback(t: &mut Threshold, mut r: USART2::Resources)
-{
-    let received_character = r.USART2.rdr.read().bits() as u8;
-    if **r.ON
-    {
-        r.GPIOB.odr.modify(|_, w| w.odr3().bit(true));
-        print_usart(t, r.USART2, "ON");
-    }
-    if !**r.ON
-    {
-        r.GPIOB.odr.modify(|_, w| w.odr3().bit(false));
-        print_usart(t, r.USART2, "OFF");
-    }
-    **r.ON = !**r.ON;
-    unsafe 
-    {
-        r.USART2.tdr.write(|w| w.tdr().bits(received_character as u16));
-    }
-    while r.USART2.isr.read().tc().bit_is_set() 
-    {
-        // Transmitting data, bit_is_set will be true when transmission completes
-    }
-}
-
-fn print_usart<A>(t: &mut Threshold, usart2: &mut A,  message: &str)
-where
-    A: Resource<Data = stm32f0x::USART2>,
-{
-    // Go through the characters in the message and send them through USART connection.
-    for character in message.chars() {
-        usart2.claim_mut(t, |usart2, _t| {
-            unsafe 
-            {
-                usart2.tdr.write(|w| w.tdr().bits(character as u16));
-            }
-            while usart2.isr.read().tc().bit_is_set() 
-            {
-                
-            }
-        });
-    }
-}
 
 fn test_timer(t: &mut Threshold, r: TIM2::Resources)
 {
@@ -178,31 +147,35 @@ fn test_timer(t: &mut Threshold, r: TIM2::Resources)
     r.TIM2.sr.write(|w| w.uif().bit(false));
     if **r.ON
     {
-        r.GPIOB.odr.modify(|_, w| w.odr3().bit(true));
-        print_usart(t, r.USART2, "ON");
+        //r.GPIOB.odr.modify(|_, w| w.odr3().bit(true));
+        //print_usart(t, r.USART2, "ON");
     }
     if !**r.ON
     {
-        r.GPIOB.odr.modify(|_, w| w.odr3().bit(false));
-        print_usart(t, r.USART2, "OFF");
+        //r.GPIOB.odr.modify(|_, w| w.odr3().bit(false));
+        //print_usart(t, r.USART2, "OFF");
     }
     **r.ON = !**r.ON;
+    transmit(t, r);
 }
 
-fn transmit(t: &mut Threshold, r: CEC_CAN::Resources)
+fn transmit(t: &mut Threshold, r: TIM2::Resources)
 {
     if(r.CAN.can_tsr.read().tme0().bit_is_set())
     {
-        r.CAN.can_tdt0r.write(|w| w.dlc().bits(1 as u8));
-        r.CAN.can_tdl0r.write(|w| w.data0().bits(14 as u8));
-        r.CAN.can_ti0r.write(|w| w.stid().bits(1 as u16));
-        r.CAN.can_ti0r.write(|w| w.txrq().set_bit());
+        r.CAN.can_tdt0r.write(|w| unsafe { w.dlc().bits(1 as u8) });
+        r.CAN.can_tdl0r.write(|w| unsafe { w.data0().bits(14 as u8) });
+        r.CAN.can_ti0r.write(|w| unsafe { w.stid().bits(1 as u16).txrq().set_bit() });
+        while(r.CAN.can_ti0r.read().txrq().bit_is_set())
+        {
+
+        }
     }
 }
 
 fn receive(t: &mut Threshold, r: CEC_CAN::Resources)
 {
-    if(r.CAN.can_rf0r.read().fmp0().bit_is_set())
+    if(r.CAN.can_rf0r.read().fmp0().bits() != 0)
     {
         let can_received_message = r.CAN.can_rdl0r.read().data0().bits();
         r.CAN.can_rf0r.write(|w| w.rfom0().set_bit());
@@ -215,6 +188,8 @@ fn receive(t: &mut Threshold, r: CEC_CAN::Resources)
 
 fn can_handler(t: &mut Threshold, r: CEC_CAN::Resources)
 {
+
+    let r:u32 = 0;
     /*
     To transmit:
     - Select one empty transmit mailbox
