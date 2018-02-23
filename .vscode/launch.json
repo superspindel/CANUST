@@ -385,7 +385,7 @@
             ],
             "swoConfig": {
                 "enabled": true,
-                "cpuFrequency": 48000000,
+                "cpuFrequency": 8000000,
                 "swoFrequency": 2000000, // you may try 1000000 if not working
                 "source": "probe",
                 "decoders": [
