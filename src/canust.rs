@@ -1,4 +1,4 @@
-use stm32f0x::{GPIOA, RCC, CAN, gpioa, can};
+use stm32f0x::{GPIOA, RCC, CAN, gpioa, can, GPIOB, gpiof};
 use core::ops::Deref;
 use core::any::{Any, TypeId};
 /*
@@ -61,134 +61,12 @@ where
 {
     pub fn receive(&self) -> Result<CAN_MESSAGE, &str> {
         let can_reg = self.0;
-        
+        if can_reg.can_rf0r.read().full0().bit_is_set() { self.receive_fifo0() }
+        else if can_reg.can_rf1r.read().full1().bit_is_set() { self.receive_fifo1() }
+        else if can_reg.can_rf0r.read().fmp0().bits() != 0 { self.receive_fifo0() }
+        else { self.receive_fifo1() }
     }
 }
-
-
-
-/*
-        receive
-        "PUBLIC"
-        Receives a message from the input mailbox. If no message available, returns a Err result with a error message inside.
-        @fifo       -> The FILTER_FIFO that the message should be stored in.
-    
-    pub fn receive(&self, fifo: FILTER_FIFO) -> Result<CAN_MESSAGE, &str> {
-        match fifo {
-            FILTER_FIFO::_0 => self._receive_fifo0(),
-            FILTER_FIFO::_1 => self._receive_fifo1(),
-        }
-    }
-    /*
-        _receive_fifo0
-        "PRIVATE"
-        Returns the message if available from the input mailbox corresponding to FIFO0 otherwhise a Err result with a suitable error message.
-    */
-    fn _receive_fifo0(&self) -> Result<CAN_MESSAGE, &str> {
-        let can_reg = self.0;
-        let mut exid = None;
-        let mut data1 = None;
-        let mut data2 = None;
-        let mut data3 = None;
-        let mut data4 = None;
-        let mut data5 = None;
-        let mut data6 = None;
-        let mut data7 = None;
-        if(can_reg.can_rf0r.read().fmp0().bits() != 0) {
-            let stid = can_reg.can_ri0r.read().stid().bits();
-            if can_reg.can_ri0r.read().ide().bit_is_set() { let exid = Some(can_reg.can_ri0r.read().exid().bits()); }
-            let rtr = Some(can_reg.can_ri0r.read().rtr().bit_is_set());
-            let time = Some(can_reg.can_rdt0r.read().time().bits());
-            let fmi = Some(can_reg.can_rdt0r.read().fmi().bits());
-            let dlc = can_reg.can_rdt0r.read().dlc().bits();
-            let data0 = can_reg.can_rdl0r.read().data0().bits();
-            if (dlc > 1) { data1 = Some(can_reg.can_rdl0r.read().data1().bits()); }
-            if (dlc > 2) { data2 = Some(can_reg.can_rdl0r.read().data2().bits()); }
-            if (dlc > 3) { data3 = Some(can_reg.can_rdl0r.read().data3().bits()); }
-            if (dlc > 4) { data4 = Some(can_reg.can_rdh0r.read().data4().bits()); }
-            if (dlc > 5) { data5 = Some(can_reg.can_rdh0r.read().data5().bits()); }
-            if (dlc > 6) { data6 = Some(can_reg.can_rdh0r.read().data6().bits()); }
-            if (dlc > 7) { data7 = Some(can_reg.can_rdh0r.read().data7().bits()); }
-
-            let message = CAN_MESSAGE {
-                data0: data0,
-                data1: data1,
-                data2: data2,
-                data3: data3,
-                data4: data4,
-                data5: data5,
-                data6: data6,
-                data7: data7,
-                rtr: rtr,
-                stid: stid,
-                exid: exid,
-                fmi: fmi,
-                time: time,
-                dlc: Some(dlc),
-            };
-            can_reg.can_rf0r.modify(|_, w| w.rfom0().set_bit());
-            Ok(message)
-        } else {
-            Err("No message available")
-        }
-    }
-    /*
-        _receive_fifo1
-        "PRIVATE"
-        Returns the message if available from the input mailbox corresponding to FIFO1 otherwhise a Err result with a suitable error message.
-    */
-    fn _receive_fifo1(&self) -> Result<CAN_MESSAGE, &str> {
-        let can_reg = self.0;
-        let mut exid = None;
-        let mut data1 = None;
-        let mut data2 = None;
-        let mut data3 = None;
-        let mut data4 = None;
-        let mut data5 = None;
-        let mut data6 = None;
-        let mut data7 = None;
-        if(can_reg.can_rf1r.read().fmp1().bits() != 0) {
-            let stid = can_reg.can_ri1r.read().stid().bits();
-            if can_reg.can_ri1r.read().ide().bit_is_set() { exid = Some(can_reg.can_ri1r.read().exid().bits()); }
-            let rtr = Some(can_reg.can_ri1r.read().rtr().bit_is_set());
-            let time = Some(can_reg.can_rdt1r.read().time().bits());
-            let fmi = Some(can_reg.can_rdt1r.read().fmi().bits());
-            let dlc = can_reg.can_rdt1r.read().dlc().bits();
-            let data0 = can_reg.can_rdl1r.read().data0().bits();
-            if (dlc > 1) { data1 = Some(can_reg.can_rdl1r.read().data1().bits()); }
-            if (dlc > 2) { data2 = Some(can_reg.can_rdl1r.read().data2().bits()); }
-            if (dlc > 3) { data3 = Some(can_reg.can_rdl1r.read().data3().bits()); }
-            if (dlc > 4) { data4 = Some(can_reg.can_rdh1r.read().data4().bits()); }
-            if (dlc > 5) { data5 = Some(can_reg.can_rdh1r.read().data5().bits()); }
-            if (dlc > 6) { data6 = Some(can_reg.can_rdh1r.read().data6().bits()); }
-            if (dlc > 7) { data7 = Some(can_reg.can_rdh1r.read().data7().bits()); }
-
-            let message = CAN_MESSAGE {
-                data0: data0,
-                data1: data1,
-                data2: data2,
-                data3: data3,
-                data4: data4,
-                data5: data5,
-                data6: data6,
-                data7: data7,
-                rtr: rtr,
-                stid: stid,
-                exid: exid,
-                fmi: fmi,
-                time: time,
-                dlc: Some(dlc),
-            };
-            can_reg.can_rf1r.modify(|_, w| w.rfom1().set_bit());
-            Ok(message)
-        } else {
-            Err("No message available")
-        }
-    }
-
-}
-*/
-
 
 macro_rules! transmit_mailbox {
     ($FUNCNAME:ident: ($tdtXr:ident, $tiXr:ident, $tdlXr:ident, $tdhXr:ident)) => {
@@ -323,13 +201,15 @@ impl CAN_MESSAGE {
     Implemented on the CAN registerblock of the stm32f0x set of processors. Also specifies the GPIO ports to be used for the CAN.
 */
 pub unsafe trait cantrait: Deref<Target = can::RegisterBlock> {
-    type GPIO: Deref<Target = gpioa::RegisterBlock>;
+    type gpioa: Deref<Target = gpioa::RegisterBlock>;
+    type gpiob: Deref<Target = gpiof::RegisterBlock>;
 }
 /*
     Implementation of cantrait on the CAN registerblock, also specifies the GPIO ports to be used.
 */
 unsafe impl cantrait for CAN {
-    type GPIO = GPIOA;
+    type gpioa = GPIOA;
+    type gpiob = GPIOB;
 }
 /*
     struct: Canust
@@ -371,15 +251,54 @@ where
         @rcc            -> Reset and clock control register, for enabling clocks on GPIOA and CAN.
         @parameters     -> Struct of can parameters to be utilized during initialization, specifies bit timing and settings for CAN transmission.
     */    
-    pub fn init(&self, gpio: &U::GPIO, rcc: &RCC, parameters: CAN_INIT_PARAMETERS) {
+    pub fn init(&self, gpioa: &U::gpioa, gpiob: &U::gpiob, rcc: &RCC, parameters: CAN_INIT_PARAMETERS) {
         let can_reg = self.0;
-        rcc.ahbenr.modify(|_, w| w.iopaen().set_bit());
         rcc.apb1enr.modify(|_, w| w.canen().set_bit());
-        gpio.moder.modify(|_, w| unsafe { w.moder11().bits(2).moder12().bits(2) });
-        gpio.otyper.modify(|_, w| w.ot11().clear_bit().ot12().clear_bit());
-        gpio.pupdr.modify(|_, w| unsafe { w.pupdr11().bits(1).pupdr12().bits(1) });
-        gpio.ospeedr.modify(|_, w| unsafe { w.ospeedr11().bits(0).ospeedr12().bits(0) });
-        gpio.afrh.modify(|_, w| unsafe { w.afrh11().bits(4).afrh12().bits(4) });
+
+        if parameters.gpioa11 || parameters.gpioa12 { rcc.ahbenr.modify(|_, w| w.iopaen().set_bit()); }
+        /*
+        Initialize gpioa pin 11 (RX)
+        */
+        if parameters.gpioa11 {
+            gpioa.moder.modify(|_, w| unsafe { w.moder11().bits(2) });
+            gpioa.otyper.modify(|_, w| w.ot11().clear_bit());
+            gpioa.pupdr.modify(|_, w| unsafe { w.pupdr11().bits(1) });
+            gpioa.ospeedr.modify(|_, w| unsafe { w.ospeedr11().bits(0) });
+            gpioa.afrh.modify(|_, w| unsafe { w.afrh11().bits(4) });
+        }
+        /*
+        Initialize gpioa pin 12 (TX)
+        */
+        if parameters.gpioa12 {
+            gpioa.moder.modify(|_, w| unsafe { w.moder12().bits(2) });
+            gpioa.otyper.modify(|_, w| w.ot12().clear_bit());
+            gpioa.pupdr.modify(|_, w| unsafe { w.pupdr12().bits(1) });
+            gpioa.ospeedr.modify(|_, w| unsafe { w.ospeedr12().bits(0) });
+            gpioa.afrh.modify(|_, w| unsafe { w.afrh12().bits(4) });
+        }
+
+        if parameters.gpiob8 || parameters.gpiob9 { rcc.ahbenr.modify(|_, w| w.iopben().set_bit()); }
+        /*
+        Initialize gpiob pin 8 (RX)
+        */
+        if parameters.gpiob8 {
+            gpiob.moder.modify(|_, w| unsafe { w.moder8().bits(2) });
+            gpiob.otyper.modify(|_, w| w.ot8().clear_bit());
+            gpiob.pupdr.modify(|_, w| unsafe { w.pupdr8().bits(1) });
+            gpiob.ospeedr.modify(|_, w| unsafe { w.ospeedr8().bits(0) });
+            gpiob.afrh.modify(|_, w| unsafe { w.afrh8().bits(4) });
+        }
+        /*
+        Initialize gpiob pin 9 (TX)
+        */
+        if parameters.gpiob9 {
+            gpiob.moder.modify(|_, w| unsafe { w.moder9().bits(2) });
+            gpiob.otyper.modify(|_, w| w.ot9().clear_bit());
+            gpiob.pupdr.modify(|_, w| unsafe { w.pupdr9().bits(1) });
+            gpiob.ospeedr.modify(|_, w| unsafe { w.ospeedr9().bits(0) });
+            gpiob.afrh.modify(|_, w| unsafe { w.afrh9().bits(4) });
+        }
+
         can_reg.can_mcr.modify(|_, w| w.inrq().set_bit());
         while (can_reg.can_msr.read().inak().bit_is_clear()) { /* wait for bxCAN to enter intialization state */ }
         can_reg.can_mcr.modify(|_, w| w.sleep().clear_bit());
@@ -412,125 +331,6 @@ where
         if (interrupts.wakeup.is_some()) { can_reg.can_ier.modify(|_, w| w.wkuie().bit(interrupts.wakeup.unwrap())) }
         if (interrupts.sleep.is_some()) { can_reg.can_ier.modify(|_, w| w.slkie().bit(interrupts.sleep.unwrap())) }
     }
-    /*
-        receive
-        "PUBLIC"
-        Receives a message from the input mailbox. If no message available, returns a Err result with a error message inside.
-        @fifo       -> The FILTER_FIFO that the message should be stored in.
-    */
-    pub fn receive(&self, fifo: FILTER_FIFO) -> Result<CAN_MESSAGE, &str> {
-        match fifo {
-            FILTER_FIFO::_0 => self._receive_fifo0(),
-            FILTER_FIFO::_1 => self._receive_fifo1(),
-        }
-    }
-    /*
-        _receive_fifo0
-        "PRIVATE"
-        Returns the message if available from the input mailbox corresponding to FIFO0 otherwhise a Err result with a suitable error message.
-    */
-    fn _receive_fifo0(&self) -> Result<CAN_MESSAGE, &str> {
-        let can_reg = self.0;
-        let mut exid = None;
-        let mut data1 = None;
-        let mut data2 = None;
-        let mut data3 = None;
-        let mut data4 = None;
-        let mut data5 = None;
-        let mut data6 = None;
-        let mut data7 = None;
-        if(can_reg.can_rf0r.read().fmp0().bits() != 0) {
-            let stid = can_reg.can_ri0r.read().stid().bits();
-            if can_reg.can_ri0r.read().ide().bit_is_set() { let exid = Some(can_reg.can_ri0r.read().exid().bits()); }
-            let rtr = Some(can_reg.can_ri0r.read().rtr().bit_is_set());
-            let time = Some(can_reg.can_rdt0r.read().time().bits());
-            let fmi = Some(can_reg.can_rdt0r.read().fmi().bits());
-            let dlc = can_reg.can_rdt0r.read().dlc().bits();
-            let data0 = can_reg.can_rdl0r.read().data0().bits();
-            if (dlc > 1) { data1 = Some(can_reg.can_rdl0r.read().data1().bits()); }
-            if (dlc > 2) { data2 = Some(can_reg.can_rdl0r.read().data2().bits()); }
-            if (dlc > 3) { data3 = Some(can_reg.can_rdl0r.read().data3().bits()); }
-            if (dlc > 4) { data4 = Some(can_reg.can_rdh0r.read().data4().bits()); }
-            if (dlc > 5) { data5 = Some(can_reg.can_rdh0r.read().data5().bits()); }
-            if (dlc > 6) { data6 = Some(can_reg.can_rdh0r.read().data6().bits()); }
-            if (dlc > 7) { data7 = Some(can_reg.can_rdh0r.read().data7().bits()); }
-
-            let message = CAN_MESSAGE {
-                data0: data0,
-                data1: data1,
-                data2: data2,
-                data3: data3,
-                data4: data4,
-                data5: data5,
-                data6: data6,
-                data7: data7,
-                rtr: rtr,
-                stid: stid,
-                exid: exid,
-                fmi: fmi,
-                time: time,
-                dlc: Some(dlc),
-            };
-            can_reg.can_rf0r.modify(|_, w| w.rfom0().set_bit());
-            Ok(message)
-        } else {
-            Err("No message available")
-        }
-    }
-    /*
-        _receive_fifo1
-        "PRIVATE"
-        Returns the message if available from the input mailbox corresponding to FIFO1 otherwhise a Err result with a suitable error message.
-    */
-    fn _receive_fifo1(&self) -> Result<CAN_MESSAGE, &str> {
-        let can_reg = self.0;
-        let mut exid = None;
-        let mut data1 = None;
-        let mut data2 = None;
-        let mut data3 = None;
-        let mut data4 = None;
-        let mut data5 = None;
-        let mut data6 = None;
-        let mut data7 = None;
-        if(can_reg.can_rf1r.read().fmp1().bits() != 0) {
-            let stid = can_reg.can_ri1r.read().stid().bits();
-            if can_reg.can_ri1r.read().ide().bit_is_set() { exid = Some(can_reg.can_ri1r.read().exid().bits()); }
-            let rtr = Some(can_reg.can_ri1r.read().rtr().bit_is_set());
-            let time = Some(can_reg.can_rdt1r.read().time().bits());
-            let fmi = Some(can_reg.can_rdt1r.read().fmi().bits());
-            let dlc = can_reg.can_rdt1r.read().dlc().bits();
-            let data0 = can_reg.can_rdl1r.read().data0().bits();
-            if (dlc > 1) { data1 = Some(can_reg.can_rdl1r.read().data1().bits()); }
-            if (dlc > 2) { data2 = Some(can_reg.can_rdl1r.read().data2().bits()); }
-            if (dlc > 3) { data3 = Some(can_reg.can_rdl1r.read().data3().bits()); }
-            if (dlc > 4) { data4 = Some(can_reg.can_rdh1r.read().data4().bits()); }
-            if (dlc > 5) { data5 = Some(can_reg.can_rdh1r.read().data5().bits()); }
-            if (dlc > 6) { data6 = Some(can_reg.can_rdh1r.read().data6().bits()); }
-            if (dlc > 7) { data7 = Some(can_reg.can_rdh1r.read().data7().bits()); }
-
-            let message = CAN_MESSAGE {
-                data0: data0,
-                data1: data1,
-                data2: data2,
-                data3: data3,
-                data4: data4,
-                data5: data5,
-                data6: data6,
-                data7: data7,
-                rtr: rtr,
-                stid: stid,
-                exid: exid,
-                fmi: fmi,
-                time: time,
-                dlc: Some(dlc),
-            };
-            can_reg.can_rf1r.modify(|_, w| w.rfom1().set_bit());
-            Ok(message)
-        } else {
-            Err("No message available")
-        }
-    }
-
 }
 /*
     struct: CAN_INIT_PARAMETERS
@@ -539,6 +339,10 @@ where
     reference manual as per the usage and definition of the can settings.
 */
 pub struct CAN_INIT_PARAMETERS {
+    pub gpioa11: bool,
+    pub gpioa12: bool,
+    pub gpiob8: bool,
+    pub gpiob9: bool,
     pub tseg1: u8,
     pub tseg2: u8,
     pub sjw: u8,
