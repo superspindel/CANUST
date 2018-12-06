@@ -3,9 +3,11 @@
 #![no_std]
 
 extern crate cortex_m;
-extern crate cortex_m_rt;
 extern crate cortex_m_rtfm as rtfm;
 extern crate stm32f0x;
+
+mod canust;
+mod can_hal;
 
 use cortex_m::*;
 use cortex_m::peripheral::SystClkSource;
@@ -15,12 +17,16 @@ app! {
     device: stm32f0x,
     resources: {
         static ON: bool = true;
+        static CAN: stm32f0x::CAN;
+        static TIM: stm32f0x::TIM2;
+        static USART2: stm32f0x::USART2;
+        static GPIOA: stm32f0x::GPIOA;
     },
     tasks: {
         TIM2:
         {
             path: test_timer,
-            resources: [CAN, ON, TIM2, USART2]
+            resources: [CAN, ON, TIM, USART2, GPIOA]
         },
         CEC_CAN:
         {
@@ -30,124 +36,138 @@ app! {
     },
 }
 
-fn init(p: init::Peripherals, _r: init::Resources)
+fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources
 {
     
-    p.RCC.apb2enr.modify(|_, w| w.syscfgen().set_bit());
-
-
-    
+    p.device.RCC.apb2enr.modify(|_, w| w.syscfgen().set_bit());
     unsafe {
-//
-    p.RCC.cr.write(|w| w.hsion().set_bit());
-    p.RCC.cfgr.modify(|_, w| w.sw().bits(0));
-//
-    ///*
-    ////Reset registry and set HSI
-	//RCC->CR = (1 << RCC_CR_HSION_Pos);
-	//RCC->CFGR &= ~(RCC_CFGR_SW);
-    //*/
-//
-    while(p.RCC.cr.read().hsirdy().bit_is_clear())
-    {
-//
+    p.device.RCC.ahbenr.modify(|_, w| w.iopaen().set_bit());
+    p.device.RCC.ahbenr.modify(|_, w| w.iopben().set_bit());
+    p.device.GPIOB.moder.write(|w| w.moder2().bits(1)); // Standby
+    p.device.GPIOA.moder.write(|w| w.moder8().bits(1)); // RED
+    p.device.GPIOA.moder.modify(|_, w| w.moder0().bits(1)); // transistor
+    p.device.GPIOA.moder.modify(|_, w| w.moder15().bits(1)); // BLUE
+    p.device.GPIOA.moder.modify(|_, w| w.moder7().bits(1)); // GREEN
     }
+    p.device.GPIOA.odr.write(|w| unsafe { w.odr8().bit(true) });
+    p.device.GPIOA.odr.modify(|_, w| unsafe { w.odr15().bit(true) });
+    p.device.GPIOA.odr.modify(|_, w| unsafe { w.odr7().bit(true)});
+    p.device.GPIOB.odr.modify(|_, w| unsafe { w.odr2().bit(false)});
+    p.device.GPIOA.odr.modify(|_, w| unsafe { w.odr0().bit(true)});
     
-//
-    ///*
-	////Wait until HSE has stabilized
-	//while((RCC->CR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
-    //*/
-//
-    p.RCC.cr.modify(|_, w| w.pllon().clear_bit());
-//
-    while(p.RCC.cr.read().pllrdy().bit_is_set())
-    {
-//
-    }
-    
-    ///*
-	////Stop PLL
-	//RCC->CR &= ~RCC_CR_PLLON;
-//
-	////Wait until PLL has stopped
-	//while(RCC->CR & RCC_CR_PLLRDY);
-//
-    //*/
-//
-    p.RCC.cfgr.modify(|_, w| w.pllmul().bits(4));
-    p.RCC.cfgr2.modify(|_, w| w.prediv().bits(0));
-    
-    ///*
-	////PLL multiplication by 6 (48MHz)
-	//RCC->CFGR |= RCC_CFGR_PLLMUL6;
-	////RCC->CFGR = RCC->CFGR & (~RCC_CFGR_PLLMUL) | (RCC_CFGR_PLLMUL3);
-//
-	////PLL source divider by 1
-	//RCC->CFGR2 &= ~(RCC_CFGR2_PREDIV);
-    //*/
-//
-    p.RCC.cfgr.modify(|_, w| w.pllsrc().bits(1));
-    p.RCC.cfgr.modify(|_, w| w.ppre().bits(4));
-    ///*
-//
-	////PLL set prediv HSI as clock source
-	//RCC->CFGR |= RCC_CFGR_PLLSRC_HSI_PREDIV;
-//
-	////Set peripheral APB clock divider by 2  (48Mhz/2 = 24Mhz)
-	//RCC->CFGR |= RCC_CFGR_PPRE_DIV2;
-//
-    //*/
-//
-    p.RCC.cr.modify(|_, w| w.pllon().set_bit());
-//
-    while(p.RCC.cr.read().pllrdy().bit_is_clear())
-    {
-//
-    }
-    ///*
-//
-	////Start PLL
-	//RCC->CR |= RCC_CR_PLLON;
-//
-	////Wait until PLL has stabilized
-	//while((RCC->CR & RCC_CR_PLLRDY) == 0);
-//
-    //*/
-//
-    p.RCC.cfgr.modify(|_, w| w.sw().bits(2));
-    while(p.RCC.cfgr.read().sws().bits() != 2)
-    {
-        let k = p.RCC.cfgr.read().sws().bits();
-    }
-    }
-//
-    //}
-    ///*
-//
-	////Set system clock from PLL
-	//RCC->CFGR |= RCC_CFGR_SW_PLL;
-//
-	////Wait until PLL is switched on
-	//while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
-//
-    //*/
-//
-    ///*
-    //RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
-//
-	////Enable AF
-	//GPIOA->MODER |= (0x2 << GPIO_MODER_MODER8_Pos);
-	//GPIOA->OSPEEDR |= GPIO_OSPEEDR_OSPEEDR8;
-	//GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR8);
-	//GPIOA->AFR[1] &= ~(GPIO_AFRH_AFRH0);
-//
-	////Set system clock output
-	//RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_MCO) | RCC_CFGR_MCO_SYSCLK;
-    //*/
 
+    
+unsafe {
+
+p.device.RCC.cr.write(|w| w.hsion().set_bit());
+p.device.RCC.cfgr.modify(|_, w| w.sw().bits(0));
+
+///*
+////Reset registry and set HSI
+//RCC->CR = (1 << RCC_CR_HSION_Pos);
+//RCC->CFGR &= ~(RCC_CFGR_SW);
+//*/
+
+while(p.device.RCC.cr.read().hsirdy().bit_is_clear())
+{
+
+}
+
+
+///*
+////Wait until HSE has stabilized
+//while((RCC->CR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI);
+//*/
+
+p.device.RCC.cr.modify(|_, w| w.pllon().clear_bit());
+
+while(p.device.RCC.cr.read().pllrdy().bit_is_set())
+{
+
+}
+
+///*
+////Stop PLL
+//RCC->CR &= ~RCC_CR_PLLON;
+
+////Wait until PLL has stopped
+//while(RCC->CR & RCC_CR_PLLRDY);
+
+//*/
+
+p.device.RCC.cfgr.modify(|_, w| w.pllmul().bits(4));
+p.device.RCC.cfgr2.modify(|_, w| w.prediv().bits(0));
+
+///*
+////PLL multiplication by 6 (48MHz)
+//RCC->CFGR |= RCC_CFGR_PLLMUL6;
+////RCC->CFGR = RCC->CFGR & (~RCC_CFGR_PLLMUL) | (RCC_CFGR_PLLMUL3);
+
+////PLL source divider by 1
+//RCC->CFGR2 &= ~(RCC_CFGR2_PREDIV);
+//*/
+
+p.device.RCC.cfgr.modify(|_, w| w.pllsrc().bits(1));
+p.device.RCC.cfgr.modify(|_, w| w.ppre().bits(4));
+///*
+
+////PLL set prediv HSI as clock source
+//RCC->CFGR |= RCC_CFGR_PLLSRC_HSI_PREDIV;
+
+////Set peripheral APB clock divider by 2  (48Mhz/2 = 24Mhz)
+//RCC->CFGR |= RCC_CFGR_PPRE_DIV2;
+
+//*/
+
+p.device.RCC.cr.modify(|_, w| w.pllon().set_bit());
+
+while(p.device.RCC.cr.read().pllrdy().bit_is_clear())
+{
+
+}
+///*
+
+////Start PLL
+//RCC->CR |= RCC_CR_PLLON;
+
+////Wait until PLL has stabilized
+//while((RCC->CR & RCC_CR_PLLRDY) == 0);
+
+//*/
+
+p.device.RCC.cfgr.modify(|_, w| w.sw().bits(2));
+while(p.device.RCC.cfgr.read().sws().bits() != 2)
+{
+    let k = p.device.RCC.cfgr.read().sws().bits();
+}
+}
+
+//}
+///*
+
+////Set system clock from PLL
+//RCC->CFGR |= RCC_CFGR_SW_PLL;
+
+////Wait until PLL is switched on
+//while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
+
+//*/
+
+///*
+//RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
+
+////Enable AF
+//GPIOA->MODER |= (0x2 << GPIO_MODER_MODER8_Pos);
+//GPIOA->OSPEEDR |= GPIO_OSPEEDR_OSPEEDR8;
+//GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPDR8);
+//GPIOA->AFR[1] &= ~(GPIO_AFRH_AFRH0);
+
+////Set system clock output
+//RCC->CFGR = (RCC->CFGR & ~RCC_CFGR_MCO) | RCC_CFGR_MCO_SYSCLK;
+//*/
+//
     unsafe {
-    p.RCC.ahbenr.modify(|_, w| w.iopaen().set_bit());
+    p.device.RCC.ahbenr.modify(|_, w| w.iopaen().set_bit());
 
     /*
     p.GPIOA.moder.modify(|_, w| w.moder8().bits(2));
@@ -160,20 +180,20 @@ fn init(p: init::Peripherals, _r: init::Resources)
     */
     }
 
-    p.RCC.apb1enr.modify(|_, w| w.tim2en().set_bit());
+    p.device.RCC.apb1enr.modify(|_, w| w.tim2en().set_bit());
     let cnt_value_tim2: u32 = 250000;
     unsafe {
-    p.TIM2.arr.write(|w| w.bits(cnt_value_tim2));
+    p.device.TIM2.arr.write(|w| w.bits(cnt_value_tim2));
     }
     let psc_value_tim2: u16 = 16;
     unsafe {
-    p.TIM2.psc.modify(|_, w| w.psc().bits(psc_value_tim2));
+    p.device.TIM2.psc.modify(|_, w| w.psc().bits(psc_value_tim2));
     }
 
-    p.TIM2.dier.write(|w| w.uie().set_bit());
-    p.TIM2.egr.write(|w| w.ug().set_bit());
-    p.TIM2.cr1.write(|w| w.cen().set_bit());
-    p.TIM2.cr1.write(|w| w.arpe().set_bit());
+    p.device.TIM2.dier.write(|w| w.uie().set_bit());
+    p.device.TIM2.egr.write(|w| w.ug().set_bit());
+    p.device.TIM2.cr1.write(|w| w.cen().set_bit());
+    p.device.TIM2.cr1.write(|w| w.arpe().set_bit());
 
     /* Initialize CAN:
     - set INRQ bit in MCR
@@ -203,48 +223,55 @@ fn init(p: init::Peripherals, _r: init::Resources)
     After SLEEP bit is cleared, sleep mode is exited once bxCAN has synchronized with the CAN bus. When the SLAK bit has been cleared by hardware.
     */
     unsafe {
-    p.GPIOA.moder.modify(|_, w| w.moder11().bits(2));
-    p.GPIOA.moder.modify(|_, w| w.moder12().bits(2));
+    p.device.GPIOA.moder.modify(|_, w| w.moder11().bits(2));
+    p.device.GPIOA.moder.modify(|_, w| w.moder12().bits(2));
 
-    p.GPIOA.otyper.modify(|_, w| w.ot11().clear_bit());
-    p.GPIOA.otyper.modify(|_, w| w.ot12().clear_bit());
+    p.device.GPIOA.otyper.modify(|_, w| w.ot11().clear_bit());
+    p.device.GPIOA.otyper.modify(|_, w| w.ot12().clear_bit());
 
-    p.GPIOA.pupdr.modify(|_, w| w.pupdr11().bits(1));
-    p.GPIOA.pupdr.modify(|_, w| w.pupdr12().bits(1));
+    p.device.GPIOA.pupdr.modify(|_, w| w.pupdr11().bits(1));
+    p.device.GPIOA.pupdr.modify(|_, w| w.pupdr12().bits(1));
 
-    p.GPIOA.ospeedr.modify(|_, w| w.ospeedr11().bits(0));
-    p.GPIOA.ospeedr.modify(|_, w| w.ospeedr12().bits(0));
+    p.device.GPIOA.ospeedr.modify(|_, w| w.ospeedr11().bits(0));
+    p.device.GPIOA.ospeedr.modify(|_, w| w.ospeedr12().bits(0));
 
-    p.GPIOA.afrh.modify(|_, w| w.afrh11().bits(4));
-    p.GPIOA.afrh.modify(|_, w| w.afrh12().bits(4));
+    p.device.GPIOA.afrh.modify(|_, w| w.afrh11().bits(4));
+    p.device.GPIOA.afrh.modify(|_, w| w.afrh12().bits(4));
 
-    p.RCC.apb1enr.modify(|_, w| w.canen().set_bit());
+    p.device.RCC.apb1enr.modify(|_, w| w.canen().set_bit());
     }
 
-    p.CAN.can_mcr.modify(|_, w| w.inrq().set_bit());
-    while (p.CAN.can_msr.read().inak().bit_is_clear())
+    p.device.CAN.can_mcr.modify(|_, w| w.inrq().set_bit());
+    while (p.device.CAN.can_msr.read().inak().bit_is_clear())
     {
         // wait for bxCAN to enter intialization state
     }
-    p.CAN.can_mcr.modify(|_, w| w.sleep().clear_bit());
-    while p.CAN.can_msr.read().slaki().bit_is_set()
+    p.device.CAN.can_mcr.modify(|_, w| w.sleep().clear_bit());
+    while p.device.CAN.can_msr.read().slaki().bit_is_set()
     {
 
     }
     //p.CAN.can_btr.write(|w| unsafe { w.bits(0x00140016).sjw().bits(3) });
-    p.CAN.can_btr.modify(|_, w| unsafe { w.ts2().bits(3).ts1().bits(15).brp().bits(2).lbkm().set_bit() });
+    p.device.CAN.can_btr.modify(|_, w| unsafe { w.ts2().bits(2).ts1().bits(11).brp().bits(2).lbkm().set_bit() });
     //p.CAN.can_ier.write(|w| w.fmpie0().set_bit().wkuie().set_bit().fmpie1().set_bit().epvie().set_bit());
-    p.CAN.can_mcr.modify(|_, w| w.inrq().clear_bit());
-    while (p.CAN.can_msr.read().inak().bit_is_set())
+    p.device.CAN.can_mcr.modify(|_, w| w.inrq().clear_bit());
+    while (p.device.CAN.can_msr.read().inak().bit_is_set())
     {
         // wait for bxCAN to enter intialization state
     }
 
-    p.CAN.can_fmr.modify(|_, w| w.finit().set_bit());
-    p.CAN.can_fa1r.modify(|_, w| w.fact0().set_bit());
-    p.CAN.f0r1.write(|w| unsafe { w.bits( (33 << 5 | 0xFF70 << 16) as u32) });
-    p.CAN.can_fmr.modify(|_, w| w.finit().clear_bit());
-    p.CAN.can_ier.modify(|_, w| w.fmpie0().set_bit());
+    p.device.CAN.can_fmr.modify(|_, w| w.finit().set_bit());
+    p.device.CAN.can_fa1r.modify(|_, w| w.fact0().set_bit());
+    p.device.CAN.f0r1.write(|w| unsafe { w.bits( (33 << 5 | 0xFF70 << 16) as u32) });
+    p.device.CAN.can_fmr.modify(|_, w| w.finit().clear_bit());
+    p.device.CAN.can_ier.modify(|_, w| w.fmpie0().set_bit());
+
+        init::LateResources {
+        CAN: p.device.CAN,
+        TIM: p.device.TIM2,
+        USART2: p.device.USART2,
+        GPIOA: p.device.GPIOA,
+    }
     
 
 
@@ -258,21 +285,21 @@ fn idle() -> !
 }
 
 
-fn test_timer(t: &mut Threshold, r: TIM2::Resources)
+fn test_timer(t: &mut Threshold, mut r: TIM2::Resources)
 {
-    r.TIM2.cr1.write(|w| w.cen().bit(true));
-    r.TIM2.sr.write(|w| w.uif().bit(false));
-    if **r.ON
+    r.TIM.cr1.write(|w| w.cen().bit(true));
+    r.TIM.sr.write(|w| w.uif().bit(false));
+    if *r.ON
     {
         //r.GPIOB.odr.modify(|_, w| w.odr3().bit(true));
         //print_usart(t, r.USART2, "ON");
     }
-    if !**r.ON
-    {
+    if !*r.ON
+    {   
         //r.GPIOB.odr.modify(|_, w| w.odr3().bit(false));
         //print_usart(t, r.USART2, "OFF");
     }
-    **r.ON = !**r.ON;
+    *r.ON = !*r.ON;
     transmit(t, r);
 }
 

@@ -9,18 +9,19 @@ version = "0.1.0"
 
 [dependencies]
 cortex-m-semihosting = "0.2.0"
-cortex-m = "0.3.1"
-cortex-m-rtfm = "0.2.2"
+cortex-m-rtfm = "0.3.4"
 
-[dependencies.cortex-m-rt]
+[dev-dependencies.cortex-m-rt]
 features = ["abort-on-panic"]
-version = "0.3.3"
+version = "0.3.9"
 
 [dependencies.stm32f0x]
 path = "stm32f0x"
 version = "0.1.0"
 features = ["rt"]
 
+[dependencies.cortex-m]
+version = "0.3.1"
+
 [profile.release]
-debug = true
 lto = true
