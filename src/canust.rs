@@ -17,111 +17,209 @@ pub enum filter {
     Implementation for the Canust API
 */
 
-/*
-        _transmit
-            "PRIVATE"
-        inputs:
-        @ number                            -> The u8 number of the available output mailbox
-        @ d0, d1, d2, d3, d4, d5, d6, d7    -> 8xu8 values that represent the data to be sent over the canbus
-        @ rtr                               -> Retransmit request, set this bit if the message is a request for data, d0 is needed, d1-d7 is optional
-        @ stid                              -> The standard ID of the message
-        @ exid                              -> The extended ID of the message, is Optional
-        @ time                              -> Optional time value when the message was constructed
-        @ dlc                               -> The length of the message, 1-8 to decide how many of d0-d7 is sent
-
-    fn _transmit(   &self, number: u8, d0: u8, d1: Option<u8>, d2: Option<u8>, d3: Option<u8>, d4: Option<u8>, d5: Option<u8>, d6: Option<u8>, d7: Option<u8>, 
-                    rtr: Option<bool>, stid: u16,  exid: Option<u32>, time: Option<u16>, dlc: Option<u8>) {
-        match number {
-            0 => {
+macro_rules! receive_fifo {
+    ($FUNCNAME:ident: ($can_rfXr:ident, $fmpX:ident, $can_riXr:ident, $can_rdtXr:ident, $can_rdlXr:ident, $can_rdhXr:ident, $rfomX:ident)) => {
+        impl<'a, U>Canust<'a, U>
+        where
+            U: Any + cantrait
+        {
+            pub fn $FUNCNAME (&self) -> Result<CAN_MESSAGE, &str> {
+                let mut message = CAN_MESSAGE::new();
                 let can_reg = self.0;
-                can_reg.can_tdt0r.modify(|_, w| unsafe { w.dlc().bits(dlc.unwrap()) });
-                can_reg.can_ti0r.write(|w| unsafe { w.stid().bits(stid) });
-                if rtr.is_some() { can_reg.can_ti0r.modify(|_, w| w.rtr().bit(rtr.unwrap())); }
-                if exid.is_some() { can_reg.can_ti0r.modify(|_, w| unsafe { w.exid().bits(exid.unwrap()) }); }
-                can_reg.can_tdl0r.modify(|_, w| unsafe { w.data0().bits(d0) });
-                if d1.is_some() { can_reg.can_tdl0r.modify(|_, w| unsafe { w.data1().bits(d1.unwrap()) }); }
-                if d2.is_some() { can_reg.can_tdl0r.modify(|_, w| unsafe { w.data2().bits(d2.unwrap()) }); }
-                if d3.is_some() { can_reg.can_tdl0r.modify(|_, w| unsafe { w.data3().bits(d3.unwrap()) }); }
-                if d4.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data4().bits(d4.unwrap()) }); }
-                if d5.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data5().bits(d5.unwrap()) }); }
-                if d6.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data6().bits(d6.unwrap()) }); }
-                if d7.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data7().bits(d7.unwrap()) }); }
-                can_reg.can_ti0r.modify(|_, w| w.txrq().set_bit());
-                while
-                (can_reg.can_ti0r.read().txrq().bit_is_set()) { }
-            },
-            1 => {
-                let can_reg = self.0;
-                can_reg.can_tdt1r.modify(|_, w| unsafe { w.dlc().bits(dlc.unwrap()) });
-                can_reg.can_ti1r.write(|w| unsafe { w.stid().bits(stid) });
-                if rtr.is_some() { can_reg.can_ti1r.modify(|_, w| w.rtr().bit(rtr.unwrap())); }
-                if exid.is_some() { can_reg.can_ti1r.modify(|_, w| unsafe { w.exid().bits(exid.unwrap()) }); }
-                can_reg.can_tdl1r.modify(|_, w| unsafe { w.data0().bits(d0) });
-                if d1.is_some() { can_reg.can_tdl1r.modify(|_, w| unsafe { w.data1().bits(d1.unwrap()) }); }
-                if d2.is_some() { can_reg.can_tdl1r.modify(|_, w| unsafe { w.data2().bits(d2.unwrap()) }); }
-                if d3.is_some() { can_reg.can_tdl1r.modify(|_, w| unsafe { w.data3().bits(d3.unwrap()) }); }
-                if d4.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data4().bits(d4.unwrap()) }); }
-                if d5.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data5().bits(d5.unwrap()) }); }
-                if d6.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data6().bits(d6.unwrap()) }); }
-                if d7.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data7().bits(d7.unwrap()) }); }
-                can_reg.can_ti1r.modify(|_, w| w.txrq().set_bit());
-                while(can_reg.can_ti1r.read().txrq().bit_is_set()) { }
-            },
-            2 => {
-                let can_reg = self.0;
-                can_reg.can_tdt2r.modify(|_, w| unsafe { w.dlc().bits(dlc.unwrap()) });
-                can_reg.can_ti2r.write(|w| unsafe { w.stid().bits(stid) });
-                if rtr.is_some() { can_reg.can_ti2r.modify(|_, w| w.rtr().bit(rtr.unwrap())); }
-                if exid.is_some() { can_reg.can_ti2r.modify(|_, w| unsafe { w.exid().bits(exid.unwrap()) }); }
-                can_reg.can_tdl2r.modify(|_, w| unsafe { w.data0().bits(d0) });
-                if d1.is_some() { can_reg.can_tdl2r.modify(|_, w| unsafe { w.data1().bits(d1.unwrap()) }); }
-                if d2.is_some() { can_reg.can_tdl2r.modify(|_, w| unsafe { w.data2().bits(d2.unwrap()) }); }
-                if d3.is_some() { can_reg.can_tdl2r.modify(|_, w| unsafe { w.data3().bits(d3.unwrap()) }); }
-                if d4.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data4().bits(d4.unwrap()) }); }
-                if d5.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data5().bits(d5.unwrap()) }); }
-                if d6.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data6().bits(d6.unwrap()) }); }
-                if d7.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data7().bits(d7.unwrap()) }); }
-                can_reg.can_ti2r.modify(|_, w| w.txrq().set_bit());
-                while(can_reg.can_ti2r.read().txrq().bit_is_set()) { }
-            },
-            _ => unreachable!(),
+                if(can_reg.$can_rfXr.read().$fmpX().bits() != 0) {
+                    message.stid = can_reg.$can_riXr.read().stid().bits();
+                    if can_reg.$can_riXr.read().ide().bit_is_set() { message.exid = Some(can_reg.$can_riXr.read().exid().bits()); }
+                    message.rtr = Some(can_reg.$can_riXr.read().rtr().bit_is_set());
+                    message.time = Some(can_reg.$can_rdtXr.read().time().bits());
+                    message.fmi = Some(can_reg.$can_rdtXr.read().fmi().bits());
+                    let dlc = can_reg.$can_rdtXr.read().dlc().bits();
+                    message.dlc = Some(dlc);
+                    message.data0 = can_reg.$can_rdlXr.read().data0().bits();
+                    if (dlc > 1) { message.data1 = Some(can_reg.$can_rdlXr.read().data1().bits()); }
+                    if (dlc > 2) { message.data2 = Some(can_reg.$can_rdlXr.read().data2().bits()); }
+                    if (dlc > 3) { message.data3 = Some(can_reg.$can_rdlXr.read().data3().bits()); }
+                    if (dlc > 4) { message.data4 = Some(can_reg.$can_rdhXr.read().data4().bits()); }
+                    if (dlc > 5) { message.data5 = Some(can_reg.$can_rdhXr.read().data5().bits()); }
+                    if (dlc > 6) { message.data6 = Some(can_reg.$can_rdhXr.read().data6().bits()); }
+                    if (dlc > 7) { message.data7 = Some(can_reg.$can_rdhXr.read().data7().bits()); }
+                    can_reg.$can_rfXr.modify(|_, w| w.$rfomX().set_bit());
+                    Ok(message)
+                } else {
+                    Err("No message available")
+                }
+            }
         }
     }
 }
-        transmit
-        "PUBLIC"
-        Sends a message on the bus if transmit mailbox is available, otherwhise returns a Err Result with a error message, if the message was sent
-        returns a OK(x) where x is the number of the mailbox used.
-        @message    -> The CAN_MESSAGE struct that contains the data to be transmitted.
-    
 
-    pub fn transmit(&self, message: CAN_MESSAGE) -> Result<u8, &str> {
+receive_fifo! { receive_fifo0: (can_rf0r, fmp0, can_ri0r, can_rdt0r, can_rdl0r, can_rdh0r, rfom0) }
+receive_fifo! { receive_fifo1: (can_rf1r, fmp1, can_ri1r, can_rdt1r, can_rdl1r, can_rdh1r, rfom1) }
+
+impl<'a, U>Canust<'a, U>
+where
+    U: Any + cantrait
+{
+    pub fn receive(&self) -> Result<CAN_MESSAGE, &str> {
         let can_reg = self.0;
-        let mut free_mailbox: Option<u8> = None;
-        if (can_reg.can_tsr.read().tme0().bit_is_set()) { free_mailbox = Some(0); }         // Check if mailbox 0 is empty, if not check 1 and then 2.
-        else if (can_reg.can_tsr.read().tme1().bit_is_set()) { free_mailbox = Some(1); }
-        else if (can_reg.can_tsr.read().tme2().bit_is_set()) { free_mailbox = Some(2); }
-        if free_mailbox.is_some() {
-            match free_mailbox.unwrap() {
-                0 => {
-                    self._transmit(0, message.data0, message.data1, message.data2, message.data3, message.data4, message.data5, message.data6, message.data7, message.rtr, message.stid, message.exid, message.time, message.dlc);
-                    Ok(0)
-                },
-                1 => {
-                    self._transmit(1, message.data0, message.data1, message.data2, message.data3, message.data4, message.data5, message.data6, message.data7, message.rtr, message.stid, message.exid, message.time, message.dlc);
-                    Ok(1)
-                },
-                2 => {
-                    self._transmit(2, message.data0, message.data1, message.data2, message.data3, message.data4, message.data5, message.data6, message.data7, message.rtr, message.stid, message.exid, message.time, message.dlc);
-                    Ok(2)
-                },
-                _ => unreachable!(),
-            }
-        } else {
-            Err("No mailbox empty")
+        
+    }
+}
+
+
+
+/*
+        receive
+        "PUBLIC"
+        Receives a message from the input mailbox. If no message available, returns a Err result with a error message inside.
+        @fifo       -> The FILTER_FIFO that the message should be stored in.
+    
+    pub fn receive(&self, fifo: FILTER_FIFO) -> Result<CAN_MESSAGE, &str> {
+        match fifo {
+            FILTER_FIFO::_0 => self._receive_fifo0(),
+            FILTER_FIFO::_1 => self._receive_fifo1(),
         }
     }
+    /*
+        _receive_fifo0
+        "PRIVATE"
+        Returns the message if available from the input mailbox corresponding to FIFO0 otherwhise a Err result with a suitable error message.
+    */
+    fn _receive_fifo0(&self) -> Result<CAN_MESSAGE, &str> {
+        let can_reg = self.0;
+        let mut exid = None;
+        let mut data1 = None;
+        let mut data2 = None;
+        let mut data3 = None;
+        let mut data4 = None;
+        let mut data5 = None;
+        let mut data6 = None;
+        let mut data7 = None;
+        if(can_reg.can_rf0r.read().fmp0().bits() != 0) {
+            let stid = can_reg.can_ri0r.read().stid().bits();
+            if can_reg.can_ri0r.read().ide().bit_is_set() { let exid = Some(can_reg.can_ri0r.read().exid().bits()); }
+            let rtr = Some(can_reg.can_ri0r.read().rtr().bit_is_set());
+            let time = Some(can_reg.can_rdt0r.read().time().bits());
+            let fmi = Some(can_reg.can_rdt0r.read().fmi().bits());
+            let dlc = can_reg.can_rdt0r.read().dlc().bits();
+            let data0 = can_reg.can_rdl0r.read().data0().bits();
+            if (dlc > 1) { data1 = Some(can_reg.can_rdl0r.read().data1().bits()); }
+            if (dlc > 2) { data2 = Some(can_reg.can_rdl0r.read().data2().bits()); }
+            if (dlc > 3) { data3 = Some(can_reg.can_rdl0r.read().data3().bits()); }
+            if (dlc > 4) { data4 = Some(can_reg.can_rdh0r.read().data4().bits()); }
+            if (dlc > 5) { data5 = Some(can_reg.can_rdh0r.read().data5().bits()); }
+            if (dlc > 6) { data6 = Some(can_reg.can_rdh0r.read().data6().bits()); }
+            if (dlc > 7) { data7 = Some(can_reg.can_rdh0r.read().data7().bits()); }
+
+            let message = CAN_MESSAGE {
+                data0: data0,
+                data1: data1,
+                data2: data2,
+                data3: data3,
+                data4: data4,
+                data5: data5,
+                data6: data6,
+                data7: data7,
+                rtr: rtr,
+                stid: stid,
+                exid: exid,
+                fmi: fmi,
+                time: time,
+                dlc: Some(dlc),
+            };
+            can_reg.can_rf0r.modify(|_, w| w.rfom0().set_bit());
+            Ok(message)
+        } else {
+            Err("No message available")
+        }
+    }
+    /*
+        _receive_fifo1
+        "PRIVATE"
+        Returns the message if available from the input mailbox corresponding to FIFO1 otherwhise a Err result with a suitable error message.
+    */
+    fn _receive_fifo1(&self) -> Result<CAN_MESSAGE, &str> {
+        let can_reg = self.0;
+        let mut exid = None;
+        let mut data1 = None;
+        let mut data2 = None;
+        let mut data3 = None;
+        let mut data4 = None;
+        let mut data5 = None;
+        let mut data6 = None;
+        let mut data7 = None;
+        if(can_reg.can_rf1r.read().fmp1().bits() != 0) {
+            let stid = can_reg.can_ri1r.read().stid().bits();
+            if can_reg.can_ri1r.read().ide().bit_is_set() { exid = Some(can_reg.can_ri1r.read().exid().bits()); }
+            let rtr = Some(can_reg.can_ri1r.read().rtr().bit_is_set());
+            let time = Some(can_reg.can_rdt1r.read().time().bits());
+            let fmi = Some(can_reg.can_rdt1r.read().fmi().bits());
+            let dlc = can_reg.can_rdt1r.read().dlc().bits();
+            let data0 = can_reg.can_rdl1r.read().data0().bits();
+            if (dlc > 1) { data1 = Some(can_reg.can_rdl1r.read().data1().bits()); }
+            if (dlc > 2) { data2 = Some(can_reg.can_rdl1r.read().data2().bits()); }
+            if (dlc > 3) { data3 = Some(can_reg.can_rdl1r.read().data3().bits()); }
+            if (dlc > 4) { data4 = Some(can_reg.can_rdh1r.read().data4().bits()); }
+            if (dlc > 5) { data5 = Some(can_reg.can_rdh1r.read().data5().bits()); }
+            if (dlc > 6) { data6 = Some(can_reg.can_rdh1r.read().data6().bits()); }
+            if (dlc > 7) { data7 = Some(can_reg.can_rdh1r.read().data7().bits()); }
+
+            let message = CAN_MESSAGE {
+                data0: data0,
+                data1: data1,
+                data2: data2,
+                data3: data3,
+                data4: data4,
+                data5: data5,
+                data6: data6,
+                data7: data7,
+                rtr: rtr,
+                stid: stid,
+                exid: exid,
+                fmi: fmi,
+                time: time,
+                dlc: Some(dlc),
+            };
+            can_reg.can_rf1r.modify(|_, w| w.rfom1().set_bit());
+            Ok(message)
+        } else {
+            Err("No message available")
+        }
+    }
+
+}
 */
+
+
+macro_rules! transmit_mailbox {
+    ($FUNCNAME:ident: ($tdtXr:ident, $tiXr:ident, $tdlXr:ident, $tdhXr:ident)) => {
+        impl<'a, U>Canust<'a, U>
+        where
+            U: Any + cantrait
+        {
+            fn $FUNCNAME(&self, message: CAN_MESSAGE) {
+                let can_reg = self.0;
+                can_reg.$tdtXr.modify(|_, w| unsafe { w.dlc().bits(message.dlc.unwrap())});
+                can_reg.$tiXr.write(|w| unsafe { w.stid().bits(message.stid) });
+                if message.rtr.is_some() { can_reg.$tiXr.modify(|_, w| w.rtr().bit(message.rtr.unwrap())); }
+                if message.exid.is_some() { can_reg.$tiXr.modify(|_, w| unsafe { w.exid().bits(message.exid.unwrap()) }); }
+                can_reg.$tdlXr.modify(|_, w| unsafe { w.data0().bits(message.data0) });
+                if message.data1.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data1().bits(message.data1.unwrap()) }); }
+                if message.data2.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data2().bits(message.data2.unwrap()) }); }
+                if message.data3.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data3().bits(message.data3.unwrap()) }); }
+                if message.data4.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data4().bits(message.data4.unwrap()) }); }
+                if message.data5.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data5().bits(message.data5.unwrap()) }); }
+                if message.data6.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data6().bits(message.data6.unwrap()) }); }
+                if message.data7.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data7().bits(message.data7.unwrap()) }); }
+                can_reg.$tiXr.modify(|_, w| w.txrq().set_bit());
+                while(can_reg.$tiXr.read().txrq().bit_is_set()) { }
+            }
+        }
+    }
+}
+
+transmit_mailbox! { transmit_mailbox_0: (can_tdt0r, can_ti0r, can_tdl0r, can_tdh0r) }
+transmit_mailbox! { transmit_mailbox_1: (can_tdt1r, can_ti1r, can_tdl1r, can_tdh1r) }
+transmit_mailbox! { transmit_mailbox_2: (can_tdt2r, can_ti2r, can_tdl2r, can_tdh2r) }
 
 macro_rules! transmit {
     ($FUNCNAME:ident: ($mbx_trans_0:ident, $mbx_trans_1:ident, $mbx_trans_2:ident )) => {
@@ -132,369 +230,57 @@ macro_rules! transmit {
             fn $FUNCNAME(&self, message: CAN_MESSAGE) -> Result<u8, &str> {
                 let can_reg = self.0;
                 let mut free_mailbox: Option<u8> = None;
-                if (can_reg.can_tsr.read().tme0().bit_is_set()) { self.$mbx_trans_0(); Ok(0) }         // Check if mailbox 0 is empty, if not check 1 and then 2.
-                else if (can_reg.can_tsr.read().tme1().bit_is_set()) { self.$mbx_trans_1(); Ok(1) }
-                else if (can_reg.can_tsr.read().tme2().bit_is_set()) { self.$mbx_trans_2(); Ok(2) }
+                if (can_reg.can_tsr.read().tme0().bit_is_set()) { self.$mbx_trans_0(message); Ok(0) }         // Check if mailbox 0 is empty, if not check 1 and then 2.
+                else if (can_reg.can_tsr.read().tme1().bit_is_set()) { self.$mbx_trans_1(message); Ok(1) }
+                else if (can_reg.can_tsr.read().tme2().bit_is_set()) { self.$mbx_trans_2(message); Ok(2) }
+                else { Err("No mailbox empty") }
             }
         }
     }
 }
 
+transmit! { transmit: (transmit_mailbox_0, transmit_mailbox_1, transmit_mailbox_2) }
 
 
-     /*
-        _add_filter function
-            "PRIVATE"
-        inputs:
-        @ filter    -> The filter enumerator that defines the identifier of the filter.
-        @ active    -> Optional bool that sets if the filter should be active or not active.
-        @ mode      -> Optional bool that sets if the filter should be in mask or list mode.
-        @ scale     -> Optional bool that sets if the filter should be in u32 or u16 mode.
-        @ fifo      -> Bool value, decides which mailbox fifo the filter should filter its messages to.
-        @ reg1      -> The value of filter register 1
-        @ reg2      -> The value of filter register 2
-    */
-macro_rules! filter {
+macro_rules! add_specific_filter {
     ($FUNCNAME:ident: ($fbmX:ident, $fscX:ident, $ffaX:ident, $fXr1:ident, $fXr2:ident, $factX:ident)) => {
         impl<'a, U> Canust<'a, U>
         where
             U: Any + cantrait
         {
-            fn $FUNCNAME(&self, number: filter, active: Option<bool>, mode: Option<bool>, scale: Option<bool>, fifo: bool, reg1: Option<u32>, reg2: Option<u32>) {
+            fn $FUNCNAME<T>(&self, filter_settings: T)
+            where
+                T: can_filter_trait
+            {
             let can_reg = self.0;
+            
+            let mode = filter_settings.get_mode();
+            let scale = filter_settings.get_scale();
+            let active = filter_settings.get_active();
+            let fifo = filter_settings.get_fifo();
+            let reg1 = filter_settings.get_reg1();
+            let reg2 = filter_settings.get_reg2();
+
+            can_reg.can_fmr.modify(|_, w| w.finit().set_bit());
+
             if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.$fbmX().bit(mode.unwrap())) };
             if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.$fscX().bit(scale.unwrap())) };
             can_reg.can_ffa1r.modify(|_, w| w.$ffaX().bit(fifo));
             if reg1.is_some() {   can_reg.$fXr1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
             if reg2.is_some() {   can_reg.$fXr2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
             if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.$factX().bit(active.unwrap())) };
+            
+            can_reg.can_fmr.modify(|_, w| w.finit().clear_bit());
             }
         }
     }
 }
 
 
-filter! { add_filter_0: (fbm0, fsc0, ffa0, f0r1, f0r2, fact0) }
-filter! { add_filter_1: (fbm1, fsc1, ffa1, f1r1, f1r2, fact1) }
-filter! { add_filter_2: (fbm2, fsc2, ffa2, f2r1, f2r2, fact2) }
+add_specific_filter! { add_filter_0: (fbm0, fsc0, ffa0, f0r1, f0r2, fact0) }
+add_specific_filter! { add_filter_1: (fbm1, fsc1, ffa1, f1r1, f1r2, fact1) }
+add_specific_filter! { add_filter_2: (fbm2, fsc2, ffa2, f2r1, f2r2, fact2) }
 
-impl<'a, U> Canust<'a, U>
-where
-    U: Any + cantrait,
-{  
-
-    /*
-    fn _add_filter(&self, number: filter, active: Option<bool>, mode: Option<bool>, scale: Option<bool>, fifo: bool, reg1: Option<u32>, reg2: Option<u32>) {
-        let can_reg = self.0;
-        match number {
-            filter::_0 => { 
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm0().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc0().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa0().bit(fifo));
-                if reg1.is_some() {   can_reg.f0r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f0r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact0().bit(active.unwrap())) };
-                
-            },
-            filter::_1 => {
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm1().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc1().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa1().bit(fifo));
-                if reg1.is_some() {   can_reg.f1r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f1r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact1().bit(active.unwrap())) };
-                
-            },
-            filter::_2 => {
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm2().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc2().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa2().bit(fifo));
-                if reg1.is_some() {   can_reg.f2r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f2r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact2().bit(active.unwrap())) };
-                
-            },
-            filter::_3 => {
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm3().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc3().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa3().bit(fifo));
-                if reg1.is_some() {   can_reg.f3r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f3r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact3().bit(active.unwrap())) };
-            },
-            filter::_4 => {
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm4().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc4().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa4().bit(fifo));
-                if reg1.is_some() {   can_reg.f4r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f4r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact4().bit(active.unwrap())) };
-            },
-            filter::_5 => {
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm5().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc5().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa5().bit(fifo));
-                if reg1.is_some() {   can_reg.f5r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f5r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact5().bit(active.unwrap())) };
-            },
-            filter::_6 => {
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm6().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc6().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa6().bit(fifo));
-                if reg1.is_some() {   can_reg.f6r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f6r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact6().bit(active.unwrap())) };
-            },
-            filter::_7 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact7().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm7().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc7().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa7().bit(fifo));
-                if reg1.is_some() {   can_reg.f7r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f7r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_8 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact8().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm8().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc8().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa8().bit(fifo));
-                if reg1.is_some() {   can_reg.f8r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f8r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_9 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact9().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm9().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc9().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa9().bit(fifo));
-                if reg1.is_some() {   can_reg.f9r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f9r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_10 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact10().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm10().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc10().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa10().bit(fifo));
-                if reg1.is_some() {   can_reg.f10r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f10r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_11 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact11().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm11().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc11().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa11().bit(fifo));
-                if reg1.is_some() {   can_reg.f11r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f11r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_12 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact12().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm12().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc12().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa12().bit(fifo));
-                if reg1.is_some() {   can_reg.f12r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f12r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_13 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact13().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm13().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc13().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa13().bit(fifo));
-                if reg1.is_some() {   can_reg.f13r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f13r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_14 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact14().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm14().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc14().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa14().bit(fifo));
-                if reg1.is_some() {   can_reg.f14r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f14r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_15 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact15().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm15().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc15().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa15().bit(fifo));
-                if reg1.is_some() {   can_reg.f15r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f15r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_16 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact16().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm16().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc16().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa16().bit(fifo));
-                if reg1.is_some() {   can_reg.f16r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f16r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_17 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact17().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm17().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc17().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa17().bit(fifo));
-                if reg1.is_some() {   can_reg.f17r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f17r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_18 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact18().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm18().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc18().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa18().bit(fifo));
-                if reg1.is_some() {   can_reg.f18r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f18r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_19 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact19().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm19().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc19().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa19().bit(fifo));
-                if reg1.is_some() {   can_reg.f19r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f19r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_20 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact20().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm20().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc20().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa20().bit(fifo));
-                if reg1.is_some() {   can_reg.f20r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f20r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_21 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact21().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm21().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc21().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa21().bit(fifo));
-                if reg1.is_some() {   can_reg.f21r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f21r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_22 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact22().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm22().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc22().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa22().bit(fifo));
-                if reg1.is_some() {   can_reg.f22r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f22r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_23 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact23().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm23().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc23().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa23().bit(fifo));
-                if reg1.is_some() {   can_reg.f23r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f23r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_24 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact24().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm24().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc24().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa24().bit(fifo));
-                if reg1.is_some() {   can_reg.f24r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f24r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_25 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact25().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm25().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc25().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa25().bit(fifo));
-                if reg1.is_some() {   can_reg.f25r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f25r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_26 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact26().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm26().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc26().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa26().bit(fifo));
-                if reg1.is_some() {   can_reg.f26r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f26r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            },
-            filter::_27 => {
-                if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.fact27().bit(active.unwrap())) };
-                if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.fbm27().bit(mode.unwrap())) };
-                if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.fsc27().bit(scale.unwrap())) };
-                can_reg.can_ffa1r.modify(|_, w| w.ffa27().bit(fifo));
-                if reg1.is_some() {   can_reg.f27r1.write(|w| unsafe { w.bits(reg1.unwrap()) }) };
-                if reg2.is_some() {   can_reg.f27r2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
-            }
-        }
-    }
-    */
-    /*
-        _transmit
-            "PRIVATE"
-        inputs:
-        @ number                            -> The u8 number of the available output mailbox
-        @ d0, d1, d2, d3, d4, d5, d6, d7    -> 8xu8 values that represent the data to be sent over the canbus
-        @ rtr                               -> Retransmit request, set this bit if the message is a request for data, d0 is needed, d1-d7 is optional
-        @ stid                              -> The standard ID of the message
-        @ exid                              -> The extended ID of the message, is Optional
-        @ time                              -> Optional time value when the message was constructed
-        @ dlc                               -> The length of the message, 1-8 to decide how many of d0-d7 is sent
-    */
-    fn _transmit(   &self, number: u8, d0: u8, d1: Option<u8>, d2: Option<u8>, d3: Option<u8>, d4: Option<u8>, d5: Option<u8>, d6: Option<u8>, d7: Option<u8>, 
-                    rtr: Option<bool>, stid: u16,  exid: Option<u32>, time: Option<u16>, dlc: Option<u8>) {
-        match number {
-            0 => {
-                let can_reg = self.0;
-                can_reg.can_tdt0r.modify(|_, w| unsafe { w.dlc().bits(dlc.unwrap()) });
-                can_reg.can_ti0r.write(|w| unsafe { w.stid().bits(stid) });
-                if rtr.is_some() { can_reg.can_ti0r.modify(|_, w| w.rtr().bit(rtr.unwrap())); }
-                if exid.is_some() { can_reg.can_ti0r.modify(|_, w| unsafe { w.exid().bits(exid.unwrap()) }); }
-                can_reg.can_tdl0r.modify(|_, w| unsafe { w.data0().bits(d0) });
-                if d1.is_some() { can_reg.can_tdl0r.modify(|_, w| unsafe { w.data1().bits(d1.unwrap()) }); }
-                if d2.is_some() { can_reg.can_tdl0r.modify(|_, w| unsafe { w.data2().bits(d2.unwrap()) }); }
-                if d3.is_some() { can_reg.can_tdl0r.modify(|_, w| unsafe { w.data3().bits(d3.unwrap()) }); }
-                if d4.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data4().bits(d4.unwrap()) }); }
-                if d5.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data5().bits(d5.unwrap()) }); }
-                if d6.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data6().bits(d6.unwrap()) }); }
-                if d7.is_some() { can_reg.can_tdh0r.modify(|_, w| unsafe { w.data7().bits(d7.unwrap()) }); }
-                can_reg.can_ti0r.modify(|_, w| w.txrq().set_bit());
-                while
-                (can_reg.can_ti0r.read().txrq().bit_is_set()) { }
-            },
-            1 => {
-                let can_reg = self.0;
-                can_reg.can_tdt1r.modify(|_, w| unsafe { w.dlc().bits(dlc.unwrap()) });
-                can_reg.can_ti1r.write(|w| unsafe { w.stid().bits(stid) });
-                if rtr.is_some() { can_reg.can_ti1r.modify(|_, w| w.rtr().bit(rtr.unwrap())); }
-                if exid.is_some() { can_reg.can_ti1r.modify(|_, w| unsafe { w.exid().bits(exid.unwrap()) }); }
-                can_reg.can_tdl1r.modify(|_, w| unsafe { w.data0().bits(d0) });
-                if d1.is_some() { can_reg.can_tdl1r.modify(|_, w| unsafe { w.data1().bits(d1.unwrap()) }); }
-                if d2.is_some() { can_reg.can_tdl1r.modify(|_, w| unsafe { w.data2().bits(d2.unwrap()) }); }
-                if d3.is_some() { can_reg.can_tdl1r.modify(|_, w| unsafe { w.data3().bits(d3.unwrap()) }); }
-                if d4.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data4().bits(d4.unwrap()) }); }
-                if d5.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data5().bits(d5.unwrap()) }); }
-                if d6.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data6().bits(d6.unwrap()) }); }
-                if d7.is_some() { can_reg.can_tdh1r.modify(|_, w| unsafe { w.data7().bits(d7.unwrap()) }); }
-                can_reg.can_ti1r.modify(|_, w| w.txrq().set_bit());
-                while(can_reg.can_ti1r.read().txrq().bit_is_set()) { }
-            },
-            2 => {
-                let can_reg = self.0;
-                can_reg.can_tdt2r.modify(|_, w| unsafe { w.dlc().bits(dlc.unwrap()) });
-                can_reg.can_ti2r.write(|w| unsafe { w.stid().bits(stid) });
-                if rtr.is_some() { can_reg.can_ti2r.modify(|_, w| w.rtr().bit(rtr.unwrap())); }
-                if exid.is_some() { can_reg.can_ti2r.modify(|_, w| unsafe { w.exid().bits(exid.unwrap()) }); }
-                can_reg.can_tdl2r.modify(|_, w| unsafe { w.data0().bits(d0) });
-                if d1.is_some() { can_reg.can_tdl2r.modify(|_, w| unsafe { w.data1().bits(d1.unwrap()) }); }
-                if d2.is_some() { can_reg.can_tdl2r.modify(|_, w| unsafe { w.data2().bits(d2.unwrap()) }); }
-                if d3.is_some() { can_reg.can_tdl2r.modify(|_, w| unsafe { w.data3().bits(d3.unwrap()) }); }
-                if d4.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data4().bits(d4.unwrap()) }); }
-                if d5.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data5().bits(d5.unwrap()) }); }
-                if d6.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data6().bits(d6.unwrap()) }); }
-                if d7.is_some() { can_reg.can_tdh2r.modify(|_, w| unsafe { w.data7().bits(d7.unwrap()) }); }
-                can_reg.can_ti2r.modify(|_, w| w.txrq().set_bit());
-                while(can_reg.can_ti2r.read().txrq().bit_is_set()) { }
-            },
-            _ => unreachable!(),
-        }
-    }
-}
-    /*
-        struct: CAN_MESSAGE
-            "PUBLIC"
-        Consists of data fields, retransmit bit, standard id, extended id bits, fmi which is the filter match index that the passed through when receiving
-        time bits and dlc bits. This is used for both receiving and transmitting messages. To transmit fill in fields:
-        data0, stid and dlc at least. Option to fill in data 1 - data 7, rtr, time and exid. dlc should match the number of data bytes to send. fmi is only for receiving messages.
-    */
 pub struct CAN_MESSAGE {
     pub data0: u8,
     pub data1: Option<u8>,
@@ -510,6 +296,27 @@ pub struct CAN_MESSAGE {
     pub fmi: Option<u8>,
     pub time: Option<u16>,
     pub dlc: Option<u8>
+}
+
+impl CAN_MESSAGE {
+    pub fn new() -> Self {
+        Self {
+            data0: 0,
+            data1: None,
+            data2: None,
+            data3: None,
+            data4: None,
+            data5: None,
+            data6: None,
+            data7: None,
+            rtr: None,
+            stid: 0,
+            exid: None,
+            fmi: None,
+            time: None,
+            dlc: None,
+        }
+    }
 }
 /*
     trait: cantrait
@@ -604,39 +411,6 @@ where
         if (interrupts.error.is_some()) { can_reg.can_ier.modify(|_, w| w.errie().bit(interrupts.error.unwrap())) }
         if (interrupts.wakeup.is_some()) { can_reg.can_ier.modify(|_, w| w.wkuie().bit(interrupts.wakeup.unwrap())) }
         if (interrupts.sleep.is_some()) { can_reg.can_ier.modify(|_, w| w.slkie().bit(interrupts.sleep.unwrap())) }
-    }
-    /*
-        transmit
-        "PUBLIC"
-        Sends a message on the bus if transmit mailbox is available, otherwhise returns a Err Result with a error message, if the message was sent
-        returns a OK(x) where x is the number of the mailbox used.
-        @message    -> The CAN_MESSAGE struct that contains the data to be transmitted.
-    */
-    pub fn transmit(&self, message: CAN_MESSAGE) -> Result<u8, &str> {
-        let can_reg = self.0;
-        let mut free_mailbox: Option<u8> = None;
-        if (can_reg.can_tsr.read().tme0().bit_is_set()) { free_mailbox = Some(0); }         // Check if mailbox 0 is empty, if not check 1 and then 2.
-        else if (can_reg.can_tsr.read().tme1().bit_is_set()) { free_mailbox = Some(1); }
-        else if (can_reg.can_tsr.read().tme2().bit_is_set()) { free_mailbox = Some(2); }
-        if free_mailbox.is_some() {
-            match free_mailbox.unwrap() {
-                0 => {
-                    self._transmit(0, message.data0, message.data1, message.data2, message.data3, message.data4, message.data5, message.data6, message.data7, message.rtr, message.stid, message.exid, message.time, message.dlc);
-                    Ok(0)
-                },
-                1 => {
-                    self._transmit(1, message.data0, message.data1, message.data2, message.data3, message.data4, message.data5, message.data6, message.data7, message.rtr, message.stid, message.exid, message.time, message.dlc);
-                    Ok(1)
-                },
-                2 => {
-                    self._transmit(2, message.data0, message.data1, message.data2, message.data3, message.data4, message.data5, message.data6, message.data7, message.rtr, message.stid, message.exid, message.time, message.dlc);
-                    Ok(2)
-                },
-                _ => unreachable!(),
-            }
-        } else {
-            Err("No mailbox empty")
-        }
     }
     /*
         receive
@@ -756,25 +530,7 @@ where
             Err("No message available")
         }
     }
-    /*
-    TODO: Add to filter macro
-        add_filter
-        "PUBLIC"
-        Adds a filter to the CAN so as to let messages through that passes the filter into the mailbox
-        @filter_settings    -> The struct containing the filter settings to be used
-        @filter_number      -> Which filter number out of the 28 available to be used
-    
-    pub fn add_filter<T>(&self, filter_settings: T, filter_number: filter)
-    where
-        T: can_filter_trait 
-    {
-        let can_reg = self.0;
-        can_reg.can_fmr.modify(|_, w| w.finit().set_bit());
-        self._add_filter(   filter_number, filter_settings.get_active(), filter_settings.get_mode(), filter_settings.get_scale(),
-                            filter_settings.get_fifo(), filter_settings.get_reg1(), filter_settings.get_reg2());
-        can_reg.can_fmr.modify(|_, w| w.finit().clear_bit());
-    }
-    */
+
 }
 /*
     struct: CAN_INIT_PARAMETERS
