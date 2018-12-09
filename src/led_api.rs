@@ -12,10 +12,9 @@ macro_rules! LED {
     ($STRUCTNAME:ident: ($moderX:ident, $odrX:ident)) => {
         pub struct $STRUCTNAME;
         impl $STRUCTNAME {
-            pub fn new(gpioa: &GPIOA, rcc: &RCC) -> Self {
+            pub fn init(&self, gpioa: &GPIOA, rcc: &RCC) {
                 rcc.ahbenr.modify(|_, w| w.iopaen().set_bit());
                 gpioa.moder.modify(|_, w| unsafe { w.$moderX().bits(1) });
-                Self{}
             }
 
             pub fn on(&self, gpioa: &GPIOA) { gpioa.odr.modify(|_, w| w.$odrX().set_bit()); }
