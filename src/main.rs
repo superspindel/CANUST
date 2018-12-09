@@ -1,32 +1,30 @@
-// #![deny(unsafe_code)]
-#![feature(proc_macro)]
 #![no_std]
-
 extern crate cortex_m;
 extern crate cortex_m_rtfm as rtfm;
 extern crate stm32f0x;
 
 mod canust;
-mod can_hal;
+mod led_api;
 
 use cortex_m::*;
 use cortex_m::peripheral::SystClkSource;
 use rtfm::{app, Resource, Threshold};
+use led_api::{PowerLed, GameLed, ConnectionLed, StatusLed};
 
 app! {
     device: stm32f0x,
     resources: {
-        static ON: bool = true;
         static CAN: stm32f0x::CAN;
-        static TIM: stm32f0x::TIM2;
         static USART2: stm32f0x::USART2;
         static GPIOA: stm32f0x::GPIOA;
+        static POWER_LED: PowerLed;
     },
+
     tasks: {
         TIM2:
         {
             path: test_timer,
-            resources: [CAN, ON, TIM, USART2, GPIOA]
+            resources: [CAN, USART2, GPIOA, POWER_LED]
         },
         CEC_CAN:
         {
@@ -36,14 +34,14 @@ app! {
     },
 }
 
-fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources
+fn init(p: init::Peripherals) -> init::LateResources
 {
 
 
 
     init::LateResources {
+    POWER_LED: PowerLed::new(&p.device.GPIOA, &p.device.RCC),
     CAN: p.device.CAN,
-    TIM: p.device.TIM2,
     USART2: p.device.USART2,
     GPIOA: p.device.GPIOA,
     }
@@ -77,5 +75,5 @@ fn receive(t: &mut Threshold, r: CEC_CAN::Resources)
 
 fn can_handler(t: &mut Threshold, r: CEC_CAN::Resources)
 {
-    
+
 }
