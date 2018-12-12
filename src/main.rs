@@ -38,11 +38,13 @@ app! {
         CEC_CAN:
         {
             path: can_handler,
+            priority: 3,
             resources: [USART2, GPIOA, CAN, POWER_LED, GAME_LED, CONN_LED, STATUS_LED]
         },
          EXTI2_3:
         {
             path: button_clicked,
+            priority: 1,
             resources: [CAN, EXTI]
         }
     },
@@ -54,15 +56,19 @@ fn init(p: init::Peripherals) -> init::LateResources
 
     let pwr_led = PowerLed;
     pwr_led.init(&p.device.GPIOA, &p.device.RCC);
+    pwr_led.toggle(&p.device.GPIOA);
 
     let game_led = GameLed;
     game_led.init(&p.device.GPIOA, &p.device.RCC);
+    game_led.toggle(&p.device.GPIOA);
 
     let conn_led = ConnectionLed;
     conn_led.init(&p.device.GPIOA, &p.device.RCC);
+    conn_led.toggle(&p.device.GPIOA);
 
     let status_led = StatusLed;
     status_led.init(&p.device.GPIOA, &p.device.RCC);
+    status_led.toggle(&p.device.GPIOA);
 
     BUTTON.init(&p.device.GPIOA, &p.device.RCC, &p.device.SYSCFG_COMP, &p.device.EXTI);
 
@@ -72,7 +78,7 @@ fn init(p: init::Peripherals) -> init::LateResources
         tseg1: 11,
         tseg2: 2,
         sjw: 3,
-        lbkm: false,
+        lbkm: true,
         silent: false,
         brp: 2,
         dbf: false,
@@ -177,11 +183,12 @@ fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
     EXTI: exti,
 }: EXTI2_3::Resources
 ) {
+    BUTTON.reset(&*exti);
     can.claim_mut(t, |canen, _t| {
         let can_connector = Canust(canen);
         let mut message = CanMessage::new();
-        message.stid = POWER_LED_ID;
+        message.stid = GAME_LED_ID;
+        message.dlc = 1;
         can_connector.transmit(message).unwrap();
     });
-    BUTTON.reset(&*exti);
 }

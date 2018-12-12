@@ -22,7 +22,7 @@ macro_rules! receive_fifo {
                     message.time = Some(can_reg.$can_rdtXr.read().time().bits());
                     message.fmi = Some(can_reg.$can_rdtXr.read().fmi().bits());
                     let dlc = can_reg.$can_rdtXr.read().dlc().bits();
-                    message.dlc = Some(dlc);
+                    message.dlc = dlc;
                     message.data0 = can_reg.$can_rdlXr.read().data0().bits();
                     if dlc > 1 { message.data1 = Some(can_reg.$can_rdlXr.read().data1().bits()); }
                     if dlc > 2 { message.data2 = Some(can_reg.$can_rdlXr.read().data2().bits()); }
@@ -93,7 +93,7 @@ macro_rules! transmit_mailbox {
         {
             fn $FUNCNAME(&self, message: CanMessage) {
                 let can_reg = self.0;
-                can_reg.$tdtXr.modify(|_, w| unsafe { w.dlc().bits(message.dlc.unwrap())});
+                can_reg.$tdtXr.modify(|_, w| unsafe { w.dlc().bits(message.dlc) });
                 can_reg.$tiXr.write(|w| unsafe { w.stid().bits(message.stid) });
                 if message.rtr.is_some() { can_reg.$tiXr.modify(|_, w| w.rtr().bit(message.rtr.unwrap())); }
                 if message.exid.is_some() { can_reg.$tiXr.modify(|_, w| unsafe { w.exid().bits(message.exid.unwrap()) }); }
@@ -191,7 +191,7 @@ pub struct CanMessage {
     pub exid: Option<u32>,
     pub fmi: Option<u8>,
     pub time: Option<u16>,
-    pub dlc: Option<u8>
+    pub dlc: u8,
 }
 
 impl CanMessage {
@@ -210,7 +210,7 @@ impl CanMessage {
             exid: None,
             fmi: None,
             time: None,
-            dlc: None,
+            dlc: 0,
         }
     }
 }
