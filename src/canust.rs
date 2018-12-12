@@ -56,7 +56,7 @@ where
         else { self.receive_fifo1() }
     }
 
-    pub fn get_interrupt(&self) -> CanInterruptsActive {
+    pub fn get_interrupts(&self) -> CanInterruptsActive {
         let can_reg = self.0;
         let mut interrupts = CanInterruptsActive::new();
         interrupts.sleep = can_reg.can_msr.read().slaki().bit_is_set();
@@ -122,7 +122,7 @@ macro_rules! transmit {
         where
             U: Any + CanTrait
         {
-            fn $FUNCNAME(&self, message: CanMessage) -> Result<u8, &str> {
+            pub fn $FUNCNAME(&self, message: CanMessage) -> Result<u8, &str> {
                 let can_reg = self.0;
                 if can_reg.can_tsr.read().tme0().bit_is_set() { self.$mbx_trans_0(message); Ok(0) }         // Check if mailbox 0 is empty, if not check 1 and then 2.
                 else if can_reg.can_tsr.read().tme1().bit_is_set() { self.$mbx_trans_1(message); Ok(1) }
@@ -142,7 +142,7 @@ macro_rules! add_specific_filter {
         where
             U: Any + CanTrait
         {
-            fn $FUNCNAME<T>(&self, filter_settings: T)
+            pub fn $FUNCNAME<T>(&self, filter_settings: T)
             where
                 T: CanFilterTrait
             {
@@ -172,8 +172,10 @@ macro_rules! add_specific_filter {
 
 
 add_specific_filter! { add_filter_0: (fbm0, fsc0, ffa0, f0r1, f0r2, fact0) }
-add_specific_filter! { add_filter_1: (fbm1, fsc1, ffa1, f1r1, f1r2, fact1) }
-add_specific_filter! { add_filter_2: (fbm2, fsc2, ffa2, f2r1, f2r2, fact2) }
+//add_specific_filter! { add_filter_1: (fbm1, fsc1, ffa1, f1r1, f1r2, fact1) }
+//add_specific_filter! { add_filter_2: (fbm2, fsc2, ffa2, f2r1, f2r2, fact2) }
+//add_specific_filter! { add_filter_3: (fbm3, fsc3, ffa3, f3r1, f3r2, fact3) }
+//add_specific_filter! { add_filter_4: (fbm4, fsc4, ffa4, f4r1, f4r2, fact4) }
 
 pub struct CanMessage {
     pub data0: u8,
