@@ -13,13 +13,13 @@ use cortex_m::peripheral::SystClkSource;
 use rtfm::{app, Resource, Threshold};
 use led_api::{PowerLed, GameLed, ConnectionLed, StatusLed};
 use button::BUTTON;
-use external_clock::CLOCK;
+use external_clock::ExternalClock;
 use canust::{Canust, CanInitParameters, FilterU16List, FilterFifo, CanInitInterrupts, CanMessage};
 
-const POWER_LED_ID: u16 = 3000;
-const GAME_LED_ID: u16 = 4000;
-const CONNECTION_LED_ID: u16 = 5000;
-const STATUS_LED_ID: u16 = 6000;
+const POWER_LED_ID: u16 = 100;
+const GAME_LED_ID: u16 = 200;
+const CONNECTION_LED_ID: u16 = 300;
+const STATUS_LED_ID: u16 = 400;
 
 app! {
     device: stm32f0x,
@@ -39,20 +39,34 @@ app! {
         {
             path: can_handler,
             priority: 3,
-            resources: [USART2, GPIOA, CAN, POWER_LED, GAME_LED, CONN_LED, STATUS_LED]
+            resources: [USART2, GPIOA, CAN, POWER_LED, GAME_LED, CONN_LED]
         },
          EXTI2_3:
         {
             path: button_clicked,
             priority: 1,
-            resources: [CAN, EXTI]
+            resources: [CAN, EXTI, STATUS_LED, GPIOA]
         }
     },
 }
 
 fn init(p: init::Peripherals) -> init::LateResources
 {
-    CLOCK.init(&p.device.RCC);
+    p.device.RCC.apb2enr.modify(|_, w| w.syscfgen().set_bit());
+    p.device.RCC.ahbenr.modify(|_, w| w.iopben().set_bit());
+    p.device.RCC.ahbenr.modify(|_, w| w.iopaen().set_bit());
+
+    /*
+    Standby output to run the tranceiver, should be set to low.
+    */
+    p.device.GPIOB.moder.modify(|_, w| unsafe { w.moder2().bits(1) });
+    p.device.GPIOB.odr.modify(|_, w| unsafe { w.odr2().bit(false) });
+    
+    /*
+    External clock set to 48MHz, prescaled down to 24MHz.
+    */
+    let ext_clock = ExternalClock;
+    ext_clock.init(&p.device.RCC);
 
     let pwr_led = PowerLed;
     pwr_led.init(&p.device.GPIOA, &p.device.RCC);
@@ -74,11 +88,13 @@ fn init(p: init::Peripherals) -> init::LateResources
 
     {
     let can_connector = Canust(&p.device.CAN);
+    // 500kbit/s 13 2 + SJW 2
+    // 11 2 3 2 settings
     let init_can = CanInitParameters {
         tseg1: 11,
         tseg2: 2,
         sjw: 3,
-        lbkm: true,
+        lbkm: false,
         silent: false,
         brp: 2,
         dbf: false,
@@ -154,7 +170,6 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
     POWER_LED: pwr_led,
     GAME_LED: game_led,
     CONN_LED: conn_led,
-    STATUS_LED: stat_led,
 }: CEC_CAN::Resources
 ) {
     let mut message_received: CanMessage = CanMessage::new();
@@ -165,15 +180,14 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
             Err(_) => unimplemented!(),
         }
     });
-    handle_lights(message_received, &*pwr_led, &*game_led, &*conn_led, &*stat_led, &gpioa);
+    handle_lights(message_received, &*pwr_led, &*game_led, &*conn_led, &gpioa);
 }
 
-fn handle_lights(message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, conn_led: &ConnectionLed, stat_led: &StatusLed, gpioa: &stm32f0x::GPIOA) {
+fn handle_lights(message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, conn_led: &ConnectionLed, gpioa: &stm32f0x::GPIOA) {
     match message.stid {
         POWER_LED_ID => { pwr_led.toggle(&gpioa) },
         GAME_LED_ID => { game_led.toggle(&gpioa) },
         CONNECTION_LED_ID => { conn_led.toggle(&gpioa) },
-        STATUS_LED_ID => { stat_led.toggle(&gpioa) },
         _ => {},
     }
 }
@@ -181,14 +195,22 @@ fn handle_lights(message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, co
 fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
     CAN: mut can,
     EXTI: exti,
+    STATUS_LED: stat_led,
+    GPIOA: mut gpioa,
 }: EXTI2_3::Resources
 ) {
     BUTTON.reset(&*exti);
-    can.claim_mut(t, |canen, _t| {
-        let can_connector = Canust(canen);
-        let mut message = CanMessage::new();
-        message.stid = GAME_LED_ID;
-        message.dlc = 1;
-        can_connector.transmit(message).unwrap();
+    gpioa.claim_mut(t, |_gpioa, _t| {
+        can.claim_mut(_t, |canen, __t| {
+            let can_connector = Canust(canen);
+            let mut message = CanMessage::new();
+            message.stid = GAME_LED_ID;
+            message.dlc = 1;
+            message.data0 = 50;
+            match can_connector.transmit(message) {
+                Ok(mbx) => stat_led.toggle(&_gpioa),
+                Err(mbx) => {},
+            }
+        });
     });
 }

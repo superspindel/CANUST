@@ -1,8 +1,6 @@
 
 use stm32f0x::{RCC};
 
-pub const CLOCK: ExternalClock = ExternalClock;
-
 pub struct ExternalClock;
 
 impl ExternalClock {

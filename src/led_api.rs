@@ -21,7 +21,7 @@ macro_rules! LED {
 
             pub fn off(&self, gpioa: &GPIOA) { gpioa.odr.modify(|_, w| w.$odrX().clear_bit()); }
 
-            pub fn toggle(&self, gpioa: &GPIOA) { gpioa.odr.modify(|r, w| w.$odrX().bit(r.$odrX().bit_is_clear())); }
+            pub fn toggle(&self, gpioa: &GPIOA) { gpioa.odr.modify(|r, w| w.$odrX().bit(r.$odrX().bit() == false)); }
         }
     }
 }

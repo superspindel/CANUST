@@ -272,12 +272,11 @@ where
     pub fn init(&self, gpioa: &U::gpioa, gpiob: &U::gpiob, rcc: &RCC, parameters: CanInitParameters) {
         let can_reg = self.0;
         rcc.apb1enr.modify(|_, w| w.canen().set_bit());
-
-        if parameters.gpioa11 || parameters.gpioa12 { rcc.ahbenr.modify(|_, w| w.iopaen().set_bit()); }
         /*
         Initialize gpioa pin 11 (RX)
         */
         if parameters.gpioa11 {
+            rcc.ahbenr.modify(|_, w| w.iopaen().set_bit());
             gpioa.moder.modify(|_, w| unsafe { w.moder11().bits(2) });
             gpioa.otyper.modify(|_, w| w.ot11().clear_bit());
             gpioa.pupdr.modify(|_, w| unsafe { w.pupdr11().bits(1) });
@@ -288,18 +287,18 @@ where
         Initialize gpioa pin 12 (TX)
         */
         if parameters.gpioa12 {
+            rcc.ahbenr.modify(|_, w| w.iopaen().set_bit());
             gpioa.moder.modify(|_, w| unsafe { w.moder12().bits(2) });
             gpioa.otyper.modify(|_, w| w.ot12().clear_bit());
             gpioa.pupdr.modify(|_, w| unsafe { w.pupdr12().bits(1) });
             gpioa.ospeedr.modify(|_, w| unsafe { w.ospeedr12().bits(0) });
             gpioa.afrh.modify(|_, w| unsafe { w.afrh12().bits(4) });
         }
-
-        if parameters.gpiob8 || parameters.gpiob9 { rcc.ahbenr.modify(|_, w| w.iopben().set_bit()); }
         /*
         Initialize gpiob pin 8 (RX)
         */
         if parameters.gpiob8 {
+            rcc.ahbenr.modify(|_, w| w.iopben().set_bit());
             gpiob.moder.modify(|_, w| unsafe { w.moder8().bits(2) });
             gpiob.otyper.modify(|_, w| w.ot8().clear_bit());
             gpiob.pupdr.modify(|_, w| unsafe { w.pupdr8().bits(1) });
@@ -310,6 +309,7 @@ where
         Initialize gpiob pin 9 (TX)
         */
         if parameters.gpiob9 {
+            rcc.ahbenr.modify(|_, w| w.iopben().set_bit());
             gpiob.moder.modify(|_, w| unsafe { w.moder9().bits(2) });
             gpiob.otyper.modify(|_, w| w.ot9().clear_bit());
             gpiob.pupdr.modify(|_, w| unsafe { w.pupdr9().bits(1) });
