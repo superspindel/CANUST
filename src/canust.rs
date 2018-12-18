@@ -96,7 +96,7 @@ macro_rules! transmit_mailbox {
                 can_reg.$tdtXr.modify(|_, w| unsafe { w.dlc().bits(message.dlc) });
                 can_reg.$tiXr.write(|w| unsafe { w.stid().bits(message.stid) });
                 if message.rtr.is_some() { can_reg.$tiXr.modify(|_, w| w.rtr().bit(message.rtr.unwrap())); }
-                if message.exid.is_some() { can_reg.$tiXr.modify(|_, w| unsafe { w.exid().bits(message.exid.unwrap()) }); }
+                if message.exid.is_some() { can_reg.$tiXr.modify(|_, w| unsafe { w.exid().bits(message.exid.unwrap()).ide().bit(true) }); }
                 can_reg.$tdlXr.modify(|_, w| unsafe { w.data0().bits(message.data0) });
                 if message.data1.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data1().bits(message.data1.unwrap()) }); }
                 if message.data2.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data2().bits(message.data2.unwrap()) }); }
@@ -480,12 +480,12 @@ impl CanFilterTrait for FilterU16List {
     fn get_reg1(&self) -> Option<u32> { 
         if self.id1.is_some() {
             if self.id2.is_some() {
-                Some((self.id2.unwrap() as u32) << 16 | self.id1.unwrap() as u32)
+                Some((self.id2.unwrap() as u32) << 21 | (self.id1.unwrap() << 5) as u32)
             } else {
-                Some(self.id1.unwrap() as u32)
+                Some((self.id1.unwrap() as u32) << 5)
             }
         }  else if self.id2.is_some() {
-            Some((self.id2.unwrap() as u32) << 16)
+            Some((self.id2.unwrap() as u32) << 21)
         } else {
             None
         }
@@ -493,12 +493,12 @@ impl CanFilterTrait for FilterU16List {
     fn get_reg2(&self) -> Option<u32> {
         if self.id3.is_some() {
             if self.id4.is_some() {
-                Some((self.id4.unwrap() as u32) << 16 | self.id3.unwrap() as u32)
+                Some((self.id4.unwrap() as u32) << 21 | (self.id3.unwrap() << 5) as u32)
             } else {
-                Some(self.id3.unwrap() as u32)
+                Some((self.id3.unwrap() as u32) << 5)
             }
         } else if self.id4.is_some() {
-            Some((self.id4.unwrap() as u32) << 16)
+            Some((self.id4.unwrap() as u32) << 21)
         } else {
             None
         }

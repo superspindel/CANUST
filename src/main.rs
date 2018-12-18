@@ -14,12 +14,12 @@ use rtfm::{app, Resource, Threshold};
 use led_api::{PowerLed, GameLed, ConnectionLed, StatusLed};
 use button::BUTTON;
 use external_clock::ExternalClock;
-use canust::{Canust, CanInitParameters, FilterU16List, FilterFifo, CanInitInterrupts, CanMessage};
+use canust::{Canust, CanInitParameters, FilterU16List, FilterFifo, CanInitInterrupts, CanMessage, FilterU32Mask, FilterU16Mask};
 
-const POWER_LED_ID: u16 = 100;
-const GAME_LED_ID: u16 = 200;
-const CONNECTION_LED_ID: u16 = 300;
-const STATUS_LED_ID: u16 = 400;
+const POWER_LED_ID: u16 = 2047;
+const GAME_LED_ID: u16 = 2046;
+const CONNECTION_LED_ID: u16 = 2045;
+const STATUS_LED_ID: u16 = 2044;
 
 app! {
     device: stm32f0x,
@@ -93,7 +93,7 @@ fn init(p: init::Peripherals) -> init::LateResources
     let init_can = CanInitParameters {
         tseg1: 11,
         tseg2: 2,
-        sjw: 3,
+        sjw: 2,
         lbkm: false,
         silent: false,
         brp: 2,
@@ -110,7 +110,7 @@ fn init(p: init::Peripherals) -> init::LateResources
         gpiob9: false,
     };
     can_connector.init(&p.device.GPIOA, &p.device.GPIOB, &p.device.RCC, init_can);
-
+    
     let sendidfilter = FilterU16List {
         fifo: FilterFifo::_0,
         active: Some(true),
@@ -120,6 +120,18 @@ fn init(p: init::Peripherals) -> init::LateResources
         id4: Some(POWER_LED_ID),
     };
     can_connector.add_filter_0(sendidfilter);
+    
+    /*
+    let sendidfilter = FilterU16Mask{
+        fifo: FilterFifo::_0,
+        active: Some(true),
+        id1: Some(GAME_LED_ID),
+        mask1: Some(0xFFFF),
+        id2: None,
+        mask2: None,
+    };
+    can_connector.add_filter_0(sendidfilter);
+    */
 
     let canterups = CanInitInterrupts {
         sleep: false,
@@ -172,6 +184,7 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
     CONN_LED: conn_led,
 }: CEC_CAN::Resources
 ) {
+    pwr_led.off(&gpioa);
     let mut message_received: CanMessage = CanMessage::new();
     can.claim_mut(t, |canen, _t| {
         let can_connector = Canust(canen);
@@ -179,16 +192,19 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
             Ok(message) => message_received = message,
             Err(_) => unimplemented!(),
         }
+        handle_lights(&canen, message_received, &*pwr_led, &*game_led, &*conn_led, &gpioa);
     });
-    handle_lights(message_received, &*pwr_led, &*game_led, &*conn_led, &gpioa);
 }
 
-fn handle_lights(message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, conn_led: &ConnectionLed, gpioa: &stm32f0x::GPIOA) {
+fn handle_lights(canen: &stm32f0x::CAN, message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, conn_led: &ConnectionLed, gpioa: &stm32f0x::GPIOA) {
     match message.stid {
         POWER_LED_ID => { pwr_led.toggle(&gpioa) },
         GAME_LED_ID => { game_led.toggle(&gpioa) },
         CONNECTION_LED_ID => { conn_led.toggle(&gpioa) },
-        _ => {},
+        _ => {
+            let can_connector = Canust(canen);
+            can_connector.transmit(message).unwrap();
+        },
     }
 }
 
