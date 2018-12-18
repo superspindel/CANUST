@@ -538,12 +538,12 @@ impl CanFilterTrait for FilterU16Mask {
     fn get_reg1(&self) -> Option<u32> {
         if self.id1.is_some() {
             if self.mask1.is_some() {
-                Some((self.mask1.unwrap() as u32) << 16 | self.id1.unwrap() as u32)
+                Some((self.mask1.unwrap() as u32) << 21 | (self.id1.unwrap() << 5) as u32)
             } else {
-                Some(self.id1.unwrap() as u32)
+                Some((self.id1.unwrap() as u32) << 5)
             }
         }  else if self.mask1.is_some() {
-            Some((self.mask1.unwrap() as u32) << 16)
+            Some((self.mask1.unwrap() as u32) << 21)
         } else {
             None
         }
@@ -551,12 +551,12 @@ impl CanFilterTrait for FilterU16Mask {
     fn get_reg2(&self) -> Option<u32> {
         if self.id2.is_some() {
             if self.mask2.is_some() {
-                Some((self.mask2.unwrap() as u32) << 16 | self.id2.unwrap() as u32)
+                Some((self.mask2.unwrap() as u32) << 21 | (self.id2.unwrap() << 5) as u32)
             } else {
-                Some(self.id2.unwrap() as u32)
+                Some((self.id2.unwrap() as u32) << 5)
             }
         } else if self.mask2.is_some() {
-            Some((self.mask2.unwrap() as u32) << 16)
+            Some((self.mask2.unwrap() as u32) << 21)
         } else {
             None
         }
@@ -579,7 +579,7 @@ pub struct FilterU32List {
     pub id2: Option<u32>,
 }
 /*
-    Implementation of CanFilterTrait for FilterU32List. Needed to make the type in the add_filter method generic of the Canust struct.
+    Implementation of CanFilterTrait for FilterU32List. Should fix to setup u32 reg1 and reg2 based on IDE, EXI, STID and RTR instead.
 */
 impl CanFilterTrait for FilterU32List {
     fn get_active(&self) -> Option<bool> {
