@@ -35,12 +35,11 @@ app! {
 fn init(p: init::Peripherals) -> init::LateResources
 {
     p.device.RCC.apb2enr.modify(|_, w| w.syscfgen().set_bit());
-    p.device.RCC.ahbenr.modify(|_, w| w.iopben().set_bit());
-    p.device.RCC.ahbenr.modify(|_, w| w.iopaen().set_bit());
 
     /*
     Standby output to run the tranceiver, should be set to low.
     */
+    p.device.RCC.ahbenr.modify(|_, w| w.iopben().set_bit());
     p.device.GPIOB.moder.modify(|_, w| unsafe { w.moder2().bits(1) });
     p.device.GPIOB.odr.modify(|_, w| unsafe { w.odr2().bit(false) });
     
