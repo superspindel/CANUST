@@ -34,12 +34,18 @@ app! {
     },
 
     tasks: {
+        /*
+        Global CAN interrupt.
+        */
         CEC_CAN:
         {
             path: can_handler,
             priority: 3,
             resources: [GPIOA, CAN, POWER_LED, GAME_LED, CONN_LED, STATUS_LED]
         },
+        /*
+        General external interrupt, connected to button on test board.
+        */
          EXTI2_3:
         {
             path: button_clicked,
@@ -66,25 +72,44 @@ fn init(p: init::Peripherals) -> init::LateResources
     let ext_clock = ExternalClock;
     ext_clock.init(&p.device.RCC);
 
+    /*
+    One of the leds connected to the board, initialized and turned on.
+    */
     let pwr_led = PowerLed;
     pwr_led.init(&p.device.GPIOA, &p.device.RCC);
     pwr_led.on(&p.device.GPIOA);
 
+    /*
+    One of the leds connected to the board, initialized and turned on.
+    */
     let game_led = GameLed;
     game_led.init(&p.device.GPIOA, &p.device.RCC);
     game_led.on(&p.device.GPIOA);
 
+    /*
+    One of the leds connected to the board, initialized and turned on.
+    */
     let conn_led = ConnectionLed;
     conn_led.init(&p.device.GPIOA, &p.device.RCC);
     conn_led.on(&p.device.GPIOA);
 
+    /*
+    One of the leds connected to the board, initialized and turned on.
+    */
     let status_led = StatusLed;
     status_led.init(&p.device.GPIOA, &p.device.RCC);
     status_led.on(&p.device.GPIOA);
 
+    /*
+    The button interrupt initializer.
+    */
     BUTTON.init(&p.device.GPIOA, &p.device.RCC, &p.device.SYSCFG_COMP, &p.device.EXTI);
 
     {
+        /*
+        The CAN object, has the internal methods used to transmit receive and initialize the CAN connection.
+        Currently developed alongside a Canalyzer from Kvaser, internal settings results in a 500kbit stream with Tseg1 = 12, Tseg2 = 3 and SJW = 3.
+        */
     let can_connector = Canust(&p.device.CAN);
     // 500kbit/s 12 3 + SJW 3
     // 11 2 2 2 settings
@@ -102,13 +127,16 @@ fn init(p: init::Peripherals) -> init::LateResources
         nart: false,
         rflm: false,
         txfp: false,
-        gpioa11: true,
-        gpioa12: true,
-        gpiob8: false,
-        gpiob9: false,
+        gpioa11: true,  // pin output initialize
+        gpioa12: true,  // pin output initialize
+        gpiob8: false,  // pin output initialize
+        gpiob9: false,  // pin output initialize
     };
     can_connector.init(&p.device.GPIOA, &p.device.GPIOB, &p.device.RCC, init_can);
     
+    /*
+    Filter for processing incomming messages, can be set up in 32 bit or 16 bit sizes, with or without a mask as per documentation.
+    */
     let sendidfilter = FilterU16List {
         fifo: FilterFifo::_0,
         active: Some(true),
@@ -119,6 +147,9 @@ fn init(p: init::Peripherals) -> init::LateResources
     };
     can_connector.add_filter_0(sendidfilter);
 
+    /*
+    The chosen interrupts to be active on the CPU.
+    */
     let canterups = CanInitInterrupts {
         sleep: false,
         wakeup: false,
@@ -167,16 +198,16 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
 ) {
     can.claim_mut(t, |canen, _t| {
         let can_connector = Canust(canen);
-        let active_interrupts = can_connector.get_interrupts();
+        let active_interrupts = can_connector.get_interrupts(); // Fetches a CanInterruptsActive struct containing information about all pending / not pending interrupts.
         handle_lights(active_interrupts, &*pwr_led, &*game_led, &*stat_led, &*conn_led, &gpioa);
     });
 }
 
 fn handle_lights( interrupts: CanInterruptsActive, pwr_led: &PowerLed, game_led: &GameLed, stat_led: &StatusLed, conn_led: &ConnectionLed, gpioa: &stm32f0x::GPIOA) {
-    if interrupts.fifo0_message_pending != 0 { pwr_led.off(&gpioa); }
-    if interrupts.fifo0_message_pending == 2 { conn_led.off(&gpioa); }
-    if interrupts.fifo0_full { game_led.off(&gpioa); }
-    if interrupts.fifo0_overrun { stat_led.off(&gpioa); }
+    if interrupts.fifo0_message_pending != 0 { pwr_led.off(&gpioa); }   // Once a message is received
+    if interrupts.fifo0_message_pending == 2 { conn_led.off(&gpioa); } // Once 2 messages has been received
+    if interrupts.fifo0_full { game_led.off(&gpioa); }  // Once the fifo is full
+    if interrupts.fifo0_overrun { stat_led.off(&gpioa); }   // Once it has overrun
 
 }
 
@@ -192,7 +223,7 @@ fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
         message.stid = GAME_LED_ID;
         message.dlc = 1;
         message.data0 = 50;
-        match can_connector.transmit(message) {
+        match can_connector.transmit(message) { // Transmits a message
             Ok(mbx) => {}
             Err(mbx) => {},
         }

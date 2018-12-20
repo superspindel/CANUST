@@ -6,6 +6,9 @@ use core::any::{Any};
     Implementation for the Canust API
 */
 
+/*
+Receive next incomming message from a specified fifo queue, current implementation has two queues.
+*/
 macro_rules! receive_fifo {
     ($FUNCNAME:ident: ($can_rfXr:ident, $fmpX:ident, $can_riXr:ident, $can_rdtXr:ident, $can_rdlXr:ident, $can_rdhXr:ident, $rfomX:ident)) => {
         impl<'a, U>Canust<'a, U>
@@ -48,6 +51,9 @@ impl<'a, U>Canust<'a, U>
 where
     U: Any + CanTrait
 {
+    /*
+    General receive method. Checks if any queue is full, in case of full fetches message from that queue, otherwise checks if any messages are available and fetches from that queue.
+    */
     pub fn receive(&self) -> Result<CanMessage, &str> {
         let can_reg = self.0;
         if can_reg.can_rf0r.read().full0().bit_is_set() { self.receive_fifo0() }
@@ -56,6 +62,9 @@ where
         else { self.receive_fifo1() }
     }
 
+    /*
+    Checks all pending interrupts and returns a CanInterruptsActive struct.
+    */
     pub fn get_interrupts(&self) -> CanInterruptsActive {
         let can_reg = self.0;
         let mut interrupts = CanInterruptsActive::new();
@@ -85,6 +94,9 @@ where
     }
 }
 
+/*
+    Macro implementation for transmit mailbox, current device has three, 0,1,2.
+*/
 macro_rules! transmit_mailbox {
     ($FUNCNAME:ident: ($tdtXr:ident, $tiXr:ident, $tdlXr:ident, $tdhXr:ident)) => {
         impl<'a, U>Canust<'a, U>
@@ -116,6 +128,9 @@ transmit_mailbox! { transmit_mailbox_0: (can_tdt0r, can_ti0r, can_tdl0r, can_tdh
 transmit_mailbox! { transmit_mailbox_1: (can_tdt1r, can_ti1r, can_tdl1r, can_tdh1r) }
 transmit_mailbox! { transmit_mailbox_2: (can_tdt2r, can_ti2r, can_tdl2r, can_tdh2r) }
 
+/*
+Transmit that will use first available transmit mailbox going from 0 upwards.
+*/
 macro_rules! transmit {
     ($FUNCNAME:ident: ($mbx_trans_0:ident, $mbx_trans_1:ident, $mbx_trans_2:ident )) => {
         impl<'a, U>Canust<'a, U>
@@ -135,7 +150,9 @@ macro_rules! transmit {
 
 transmit! { transmit: (transmit_mailbox_0, transmit_mailbox_1, transmit_mailbox_2) }
 
-
+/*
+Filter implementation, takes a struct that implements the CanFilterTrait and sets up the filter with the speficied settings.
+*/
 macro_rules! add_specific_filter {
     ($FUNCNAME:ident: ($fbmX:ident, $fscX:ident, $ffaX:ident, $fXr1:ident, $fXr2:ident, $factX:ident)) => {
         impl<'a, U> Canust<'a, U>
@@ -170,13 +187,18 @@ macro_rules! add_specific_filter {
     }
 }
 
-
+/*
+Can add more here if need be, implement only those needed as these devices have limited storage.
+*/
 add_specific_filter! { add_filter_0: (fbm0, fsc0, ffa0, f0r1, f0r2, fact0) }
 //add_specific_filter! { add_filter_1: (fbm1, fsc1, ffa1, f1r1, f1r2, fact1) }
 //add_specific_filter! { add_filter_2: (fbm2, fsc2, ffa2, f2r1, f2r2, fact2) }
 //add_specific_filter! { add_filter_3: (fbm3, fsc3, ffa3, f3r1, f3r2, fact3) }
 //add_specific_filter! { add_filter_4: (fbm4, fsc4, ffa4, f4r1, f4r2, fact4) }
 
+/*
+Struct containing all data of a can message, either to transmit or received.
+*/
 pub struct CanMessage {
     pub data0: u8,
     pub data1: Option<u8>,
@@ -187,11 +209,11 @@ pub struct CanMessage {
     pub data6: Option<u8>,
     pub data7: Option<u8>,
     pub rtr: Option<bool>,
-    pub stid: u16,
-    pub exid: Option<u32>,
+    pub stid: u16,  // Standard ID
+    pub exid: Option<u32>, // Extended ID
     pub fmi: Option<u8>,
     pub time: Option<u16>,
-    pub dlc: u8,
+    pub dlc: u8, // Number of data bytes
 }
 
 impl CanMessage {
@@ -262,12 +284,7 @@ where
     U: Any + CanTrait,
 {
     /*
-        Init
-        "PUBLIC"
-        Initializes the CAN on the bus, sets bit timing bits and enters normal state. Needs to read 11 consecutive recessive bits on the bus to enter Normal state.
-        @gpio           -> GPIO bort to be used for the CAN messages, specified as GPIOA in the CanTrait implementation.
-        @rcc            -> Reset and clock control register, for enabling clocks on GPIOA and CAN.
-        @parameters     -> Struct of can parameters to be utilized during initialization, specifies bit timing and settings for CAN transmission.
+        Init will setup the CAN as per the CanInitParameters, as well as the GPIO pins selected in the same struct.
     */    
     pub fn init(&self, gpioa: &U::gpioa, gpiob: &U::gpiob, rcc: &RCC, parameters: CanInitParameters) {
         let can_reg = self.0;
@@ -376,10 +393,8 @@ pub struct CanInitParameters {
     pub txfp: bool,
 }
 /*
-    struct: CAN_INTERRUPTS
-    This is used to define which interrupts should be active on the CAN. They are described in full in the reference manual
-    but important ones are, fifo0_message_pending and fifo1_message_pending that alerts the interrupt handler when a new message is available,
-    fifo1_full and fifo0_full which alerts is either of the FIFOs for the incomming messages are full.
+CanInterruptsActive is the struct containing information on all pending interrupts, it also contains the last error code etc.
+Check information from reference manual for further information.
 */
 pub struct CanInterruptsActive {
     pub sleep: bool,
@@ -405,7 +420,12 @@ pub struct CanInterruptsActive {
     pub albitration_error_1: bool,
     pub albitration_error_2: bool,
 }
-
+/*
+    struct: CanInitInterrupts
+    This is used to define which interrupts should be active on the CAN. They are described in full in the reference manual
+    but important ones are, fifo0_message_pending and fifo1_message_pending that alerts the interrupt handler when a new message is available,
+    fifo1_full and fifo0_full which alerts is either of the FIFOs for the incomming messages are full.
+*/
 pub struct CanInitInterrupts {
     pub sleep: bool,
     pub wakeup: bool,
