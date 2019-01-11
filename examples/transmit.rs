@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(int_to_from_bytes)]
 extern crate cortex_m;
 extern crate cortex_m_rtfm as rtfm;
 extern crate stm32f0x;
@@ -135,7 +136,7 @@ fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
         let mut message = CanMessage::new(); // Create new message
         message.stid = GAME_LED_ID; // Setting standard id to 2046
         message.dlc = 1; // Setting DLC to 1.
-        message.data0 = 50; // Setting data0 to 50
+        message.dataset_0[0] = 50;
         match can_connector.transmit(message) { // match the transmit to check if a transmit mailbox was available
             Ok(mbx) => {} // Transmit OK
             Err(mbx) => {}, // Transmit mailboxes are full

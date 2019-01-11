@@ -5,6 +5,7 @@
 */
 
 #![no_std]
+#![feature(int_to_from_bytes)]
 extern crate cortex_m;
 extern crate cortex_m_rtfm as rtfm;
 extern crate stm32f0x;
@@ -236,7 +237,7 @@ fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
         let mut message = CanMessage::new();
         message.stid = GAME_LED_ID;
         message.dlc = 1;
-        message.data0 = 50;
+        message.dataset_0[0] = 50;
         match can_connector.transmit(message) { // Transmits a message
             Ok(mbx) => {}
             Err(mbx) => {},

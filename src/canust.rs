@@ -19,21 +19,18 @@ macro_rules! receive_fifo {
                 let mut message = CanMessage::new();
                 let can_reg = self.0;
                 if can_reg.$can_rfXr.read().$fmpX().bits() != 0 {
-                    message.stid = can_reg.$can_riXr.read().stid().bits();
-                    if can_reg.$can_riXr.read().ide().bit_is_set() { message.exid = Some(can_reg.$can_riXr.read().exid().bits()); }
-                    message.rtr = Some(can_reg.$can_riXr.read().rtr().bit_is_set());
-                    message.time = Some(can_reg.$can_rdtXr.read().time().bits());
-                    message.fmi = Some(can_reg.$can_rdtXr.read().fmi().bits());
-                    let dlc = can_reg.$can_rdtXr.read().dlc().bits();
+                    let rixr = can_reg.$can_riXr.read();
+                    let rdtxr = can_reg.$can_rdtXr.read();
+                    
+                    message.stid = rixr.stid().bits();
+                    if rixr.ide().bit_is_set() { message.exid = Some(rixr.exid().bits()) };
+                    message.rtr = Some(rixr.rtr().bit_is_set());
+                    message.time = Some(rdtxr.time().bits());
+                    message.fmi = Some(rdtxr.fmi().bits());
+                    let dlc = rdtxr.dlc().bits();
                     message.dlc = dlc;
-                    message.data0 = can_reg.$can_rdlXr.read().data0().bits();
-                    if dlc > 1 { message.data1 = Some(can_reg.$can_rdlXr.read().data1().bits()); }
-                    if dlc > 2 { message.data2 = Some(can_reg.$can_rdlXr.read().data2().bits()); }
-                    if dlc > 3 { message.data3 = Some(can_reg.$can_rdlXr.read().data3().bits()); }
-                    if dlc > 4 { message.data4 = Some(can_reg.$can_rdhXr.read().data4().bits()); }
-                    if dlc > 5 { message.data5 = Some(can_reg.$can_rdhXr.read().data5().bits()); }
-                    if dlc > 6 { message.data6 = Some(can_reg.$can_rdhXr.read().data6().bits()); }
-                    if dlc > 7 { message.data7 = Some(can_reg.$can_rdhXr.read().data7().bits()); }
+                    message.dataset_0 = can_reg.$can_rdlXr.read().bits().to_be_bytes();
+                    if dlc > 4 { message.dataset_1 = Some(can_reg.$can_rdhXr.read().bits().to_be_bytes()) };
                     can_reg.$can_rfXr.modify(|_, w| w.$rfomX().set_bit());
                     Ok(message)
                 } else {
@@ -56,9 +53,11 @@ where
     */
     pub fn receive(&self) -> Result<CanMessage, &str> {
         let can_reg = self.0;
-        if can_reg.can_rf0r.read().full0().bit_is_set() { self.receive_fifo0() }
+        let rf0r = can_reg.can_rf0r.read();
+
+        if rf0r.full0().bit_is_set() { self.receive_fifo0() }
         else if can_reg.can_rf1r.read().full1().bit_is_set() { self.receive_fifo1() }
-        else if can_reg.can_rf0r.read().fmp0().bits() != 0 { self.receive_fifo0() }
+        else if rf0r.fmp0().bits() != 0 { self.receive_fifo0() }
         else { self.receive_fifo1() }
     }
 
@@ -68,28 +67,39 @@ where
     pub fn get_interrupts(&self) -> CanInterruptsActive {
         let can_reg = self.0;
         let mut interrupts = CanInterruptsActive::new();
-        interrupts.sleep = can_reg.can_msr.read().slaki().bit_is_set();
-        interrupts.wakeup = can_reg.can_msr.read().wkui().bit_is_set();
-        interrupts.error = can_reg.can_msr.read().erri().bit_is_set();
-        interrupts.transmit_mailbox_0_empty = can_reg.can_tsr.read().tme0().bit_is_set();
-        interrupts.transmit_mailbox_1_empty = can_reg.can_tsr.read().tme1().bit_is_set();
-        interrupts.transmit_mailbox_2_empty = can_reg.can_tsr.read().tme2().bit_is_set();
-        interrupts.transmit_error_0 = can_reg.can_tsr.read().terr0().bit_is_set();
-        interrupts.transmit_error_1 = can_reg.can_tsr.read().terr1().bit_is_set();
-        interrupts.transmit_error_2 = can_reg.can_tsr.read().terr2().bit_is_set();
-        interrupts.albitration_error_0 = can_reg.can_tsr.read().alst0().bit_is_set();
-        interrupts.albitration_error_1 = can_reg.can_tsr.read().alst1().bit_is_set();
-        interrupts.albitration_error_2 = can_reg.can_tsr.read().alst2().bit_is_set();
-        interrupts.fifo0_overrun = can_reg.can_rf0r.read().fovr0().bit_is_set();
-        interrupts.fifo0_full = can_reg.can_rf0r.read().full0().bit_is_set();
-        interrupts.fifo0_message_pending = can_reg.can_rf0r.read().fmp0().bits();
-        interrupts.fifo1_overrun = can_reg.can_rf1r.read().fovr1().bit_is_set();
-        interrupts.fifo1_full = can_reg.can_rf1r.read().full1().bit_is_set();
-        interrupts.fifo1_message_pending = can_reg.can_rf1r.read().fmp1().bits();
-        interrupts.last_error_code = can_reg.can_esr.read().lec().bits();
-        interrupts.bus_off = can_reg.can_esr.read().boff().bit_is_set();
-        interrupts.error_passive = can_reg.can_esr.read().epvf().bit_is_set();
-        interrupts.error_warning = can_reg.can_esr.read().ewgf().bit_is_set();
+        
+        let msr = can_reg.can_msr.read();
+        let tsr = can_reg.can_tsr.read();
+        let rf0r = can_reg.can_rf0r.read();
+        let rf1r = can_reg.can_rf1r.read();
+        let esr = can_reg.can_esr.read();
+
+        interrupts.sleep = msr.slaki().bit_is_set();
+        interrupts.wakeup = msr.wkui().bit_is_set();
+        interrupts.error = msr.erri().bit_is_set();
+
+        interrupts.transmit_mailbox_0_empty = tsr.tme0().bit_is_set();
+        interrupts.transmit_mailbox_1_empty = tsr.tme1().bit_is_set();
+        interrupts.transmit_mailbox_2_empty = tsr.tme2().bit_is_set();
+        interrupts.transmit_error_0 = tsr.terr0().bit_is_set();
+        interrupts.transmit_error_1 = tsr.terr1().bit_is_set();
+        interrupts.transmit_error_2 = tsr.terr2().bit_is_set();
+        interrupts.albitration_error_0 = tsr.alst0().bit_is_set();
+        interrupts.albitration_error_1 = tsr.alst1().bit_is_set();
+        interrupts.albitration_error_2 = tsr.alst2().bit_is_set();
+
+        interrupts.fifo0_overrun = rf0r.fovr0().bit_is_set();
+        interrupts.fifo0_full = rf0r.full0().bit_is_set();
+        interrupts.fifo0_message_pending = rf0r.fmp0().bits();
+        
+        interrupts.fifo1_overrun = rf1r.fovr1().bit_is_set();
+        interrupts.fifo1_full = rf1r.full1().bit_is_set();
+        interrupts.fifo1_message_pending = rf1r.fmp1().bits();
+        
+        interrupts.last_error_code = esr.lec().bits();
+        interrupts.bus_off = esr.boff().bit_is_set();
+        interrupts.error_passive = esr.epvf().bit_is_set();
+        interrupts.error_warning = esr.ewgf().bit_is_set();
         interrupts
     }
 }
@@ -109,14 +119,8 @@ macro_rules! transmit_mailbox {
                 can_reg.$tiXr.write(|w| unsafe { w.stid().bits(message.stid) });
                 if message.rtr.is_some() { can_reg.$tiXr.modify(|_, w| w.rtr().bit(message.rtr.unwrap())); }
                 if message.exid.is_some() { can_reg.$tiXr.modify(|_, w| unsafe { w.exid().bits(message.exid.unwrap()).ide().bit(true) }); }
-                can_reg.$tdlXr.modify(|_, w| unsafe { w.data0().bits(message.data0) });
-                if message.data1.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data1().bits(message.data1.unwrap()) }); }
-                if message.data2.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data2().bits(message.data2.unwrap()) }); }
-                if message.data3.is_some() { can_reg.$tdlXr.modify(|_, w| unsafe { w.data3().bits(message.data3.unwrap()) }); }
-                if message.data4.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data4().bits(message.data4.unwrap()) }); }
-                if message.data5.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data5().bits(message.data5.unwrap()) }); }
-                if message.data6.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data6().bits(message.data6.unwrap()) }); }
-                if message.data7.is_some() { can_reg.$tdhXr.modify(|_, w| unsafe { w.data7().bits(message.data7.unwrap()) }); }
+                can_reg.$tdlXr.modify(|_, w| unsafe { w.bits(u32::from_be_bytes(message.dataset_0)) });
+                if message.dlc > 4 { can_reg.$tdhXr.modify(|_, w| unsafe { w.bits(u32::from_be_bytes(message.dataset_1.unwrap())) }) };
                 can_reg.$tiXr.modify(|_, w| w.txrq().set_bit());
                 while can_reg.$tiXr.read().txrq().bit_is_set() { }
             }
@@ -139,9 +143,10 @@ macro_rules! transmit {
         {
             pub fn $FUNCNAME(&self, message: CanMessage) -> Result<u8, &str> {
                 let can_reg = self.0;
-                if can_reg.can_tsr.read().tme0().bit_is_set() { self.$mbx_trans_0(message); Ok(0) }         // Check if mailbox 0 is empty, if not check 1 and then 2.
-                else if can_reg.can_tsr.read().tme1().bit_is_set() { self.$mbx_trans_1(message); Ok(1) }
-                else if can_reg.can_tsr.read().tme2().bit_is_set() { self.$mbx_trans_2(message); Ok(2) }
+                let tsr = can_reg.can_tsr.read();
+                if tsr.tme0().bit_is_set() { self.$mbx_trans_0(message); Ok(0) }         // Check if mailbox 0 is empty, if not check 1 and then 2.
+                else if tsr.tme1().bit_is_set() { self.$mbx_trans_1(message); Ok(1) }
+                else if tsr.tme2().bit_is_set() { self.$mbx_trans_2(message); Ok(2) }
                 else { Err("No mailbox empty") }
             }
         }
@@ -200,14 +205,8 @@ add_specific_filter! { add_filter_0: (fbm0, fsc0, ffa0, f0r1, f0r2, fact0) }
 Struct containing all data of a can message, either to transmit or received.
 */
 pub struct CanMessage {
-    pub data0: u8,
-    pub data1: Option<u8>,
-    pub data2: Option<u8>,
-    pub data3: Option<u8>,
-    pub data4: Option<u8>,
-    pub data5: Option<u8>,
-    pub data6: Option<u8>,
-    pub data7: Option<u8>,
+    pub dataset_0: [u8; 4],
+    pub dataset_1: Option<[u8; 4]>,
     pub rtr: Option<bool>,
     pub stid: u16,  // Standard ID
     pub exid: Option<u32>, // Extended ID
@@ -219,14 +218,8 @@ pub struct CanMessage {
 impl CanMessage {
     pub fn new() -> Self {
         Self {
-            data0: 0,
-            data1: None,
-            data2: None,
-            data3: None,
-            data4: None,
-            data5: None,
-            data6: None,
-            data7: None,
+            dataset_0: [0; 4],
+            dataset_1: None,
             rtr: None,
             stid: 0,
             exid: None,
@@ -351,20 +344,20 @@ where
     */
     pub fn canit(&self, interrupts: CanInitInterrupts) {
         let can_reg = self.0;
-        can_reg.can_ier.modify(|_, w| w.tmeie().bit(interrupts.transmit_mailbox_empty));
-        can_reg.can_ier.modify(|_, w| w.fmpie0().bit(interrupts.fifo0_message_pending));
-        can_reg.can_ier.modify(|_, w| w.ffie0().bit(interrupts.fifo0_full));
-        can_reg.can_ier.modify(|_, w| w.fovie0().bit(interrupts.fifo0_overrun));
-        can_reg.can_ier.modify(|_, w| w.fmpie1().bit(interrupts.fifo1_message_pending));
-        can_reg.can_ier.modify(|_, w| w.ffie1().bit(interrupts.fifo1_full));
-        can_reg.can_ier.modify(|_, w| w.fovie1().bit(interrupts.fifo1_overrun));
-        can_reg.can_ier.modify(|_, w| w.ewgie().bit(interrupts.error_warning));
-        can_reg.can_ier.modify(|_, w| w.epvie().bit(interrupts.error_passive));
-        can_reg.can_ier.modify(|_, w| w.bofie().bit(interrupts.bus_off));
-        can_reg.can_ier.modify(|_, w| w.lecie().bit(interrupts.last_error_code));
-        can_reg.can_ier.modify(|_, w| w.errie().bit(interrupts.error));
-        can_reg.can_ier.modify(|_, w| w.wkuie().bit(interrupts.wakeup));
-        can_reg.can_ier.modify(|_, w| w.slkie().bit(interrupts.sleep));
+        can_reg.can_ier.modify(|_, w| w.tmeie().bit(interrupts.transmit_mailbox_empty)
+                                        .fmpie0().bit(interrupts.fifo0_message_pending)
+                                        .ffie0().bit(interrupts.fifo0_full)
+                                        .fovie0().bit(interrupts.fifo0_overrun)
+                                        .fmpie1().bit(interrupts.fifo1_message_pending)
+                                        .ffie1().bit(interrupts.fifo1_full)
+                                        .fovie1().bit(interrupts.fifo1_overrun)
+                                        .ewgie().bit(interrupts.error_warning)
+                                        .epvie().bit(interrupts.error_passive)
+                                        .bofie().bit(interrupts.bus_off)
+                                        .lecie().bit(interrupts.last_error_code)
+                                        .errie().bit(interrupts.error)
+                                        .wkuie().bit(interrupts.wakeup)
+                                        .slkie().bit(interrupts.sleep));
     }
 }
 /*
@@ -612,10 +605,12 @@ impl CanFilterTrait for FilterU32List {
         }
     }
     fn get_reg1(&self) -> Option<u32> {
-        self.id1 << 3
+        if self.id1.is_some() { Some(self.id1.unwrap() << 3) }
+        else { None }
     }
     fn get_reg2(&self) -> Option<u32> {
-        self.id2 << 3
+        if self.id2.is_some() { Some(self.id2.unwrap() << 3) }
+        else { None }
     }
     fn get_scale(&self) -> Option<bool> {
         Some(true)
@@ -648,10 +643,12 @@ impl CanFilterTrait for FilterU32Mask {
         }
     }
     fn get_reg1(&self) -> Option<u32> {
-        self.id << 3
+        if self.id.is_some() { Some(self.id.unwrap() << 3) }
+        else { None }
     }
     fn get_reg2(&self) -> Option<u32> {
-        self.mask << 3
+        if self.mask.is_some() { Some(self.mask.unwrap() << 3) }
+        else { None }
     }
     fn get_scale(&self) -> Option<bool> {
         Some(true)
