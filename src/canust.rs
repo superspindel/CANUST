@@ -29,8 +29,8 @@ macro_rules! receive_fifo {
                     message.fmi = Some(rdtxr.fmi().bits());
                     let dlc = rdtxr.dlc().bits();
                     message.dlc = dlc;
-                    message.dataset_0 = can_reg.$can_rdlXr.read().bits().to_be_bytes();
-                    if dlc > 4 { message.dataset_1 = Some(can_reg.$can_rdhXr.read().bits().to_be_bytes()) };
+                    message.dataset_0 = can_reg.$can_rdlXr.read().bits().to_le_bytes();
+                    if dlc > 4 { message.dataset_1 = Some(can_reg.$can_rdhXr.read().bits().to_le_bytes()) };
                     can_reg.$can_rfXr.modify(|_, w| w.$rfomX().set_bit());
                     Ok(message)
                 } else {
