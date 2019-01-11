@@ -1,6 +1,6 @@
-# `CANUST rust CAN API`
+# `CANUST rust CAN`
 
-> a API for building CAN applications in rust for the stm32 board.
+> Code for building CAN applications in rust for the STM32F0x board.
 
 ## Rust versions
 `rustc 1.30.0-nightly (2f1547c0a 2018-09-11)`  
@@ -24,4 +24,11 @@ For furher understanding of the board created check out
 
 ## Usage of CANUST
 This is not a complete API. It's focused on providing the various functionalities of CAN on a stm32f0x board in the most basic of ways. Therefore most of the setup and decision making on registers are left to the user.
-By checking the different examples one can see how to setup and use the CAN bus to transfer and receive messages and keep up to date with the different interrupts active on the CAN. 
+By checking the different examples one can see how to setup and use the CAN bus to transfer and receive messages and keep up to date with the different interrupts active on the CAN.  
+
+### Hardware
+Can Transceiver  
+`MCP2562 - reference manual: http://ww1.microchip.com/downloads/en/DeviceDoc/20005167C.pdf`  
+Processor  
+`STM32F042K6T6 - reference manual: https://www.st.com/content/ccc/resource/technical/document/reference_manual/c2/f8/8a/f2/18/e6/43/96/DM00031936.pdf/files/DM00031936.pdf/jcr:content/translations/en.DM00031936.pdf`  
+
