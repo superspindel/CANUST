@@ -326,7 +326,7 @@ where
             gpiob.ospeedr.modify(|_, w| unsafe { w.ospeedr9().bits(0) });
             gpiob.afrh.modify(|_, w| unsafe { w.afrh9().bits(4) });
         }
-
+        
         can_reg.can_mcr.modify(|_, w| w.inrq().set_bit());
         while can_reg.can_msr.read().inak().bit_is_clear() { /* wait for bxCAN to enter intialization state */ }
         can_reg.can_mcr.modify(|_, w| w.sleep().clear_bit());
