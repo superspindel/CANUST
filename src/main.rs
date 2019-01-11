@@ -1,3 +1,6 @@
+/*
+Example of turning the LEDs on and off depending on the specific standard id received on the message.
+*/
 #![no_std]
 #![feature(int_to_from_bytes)]
 extern crate cortex_m;
@@ -17,6 +20,7 @@ use button::BUTTON;
 use external_clock::ExternalClock;
 use canust::{Canust, CanInitParameters, FilterU16List, FilterFifo, CanInitInterrupts, CanMessage, FilterU32Mask, FilterU16Mask};
 
+// The different standard ids that the filter allows.
 const POWER_LED_ID: u16 = 2047;
 const GAME_LED_ID: u16 = 2046;
 const CONNECTION_LED_ID: u16 = 2045;
@@ -26,10 +30,22 @@ app! {
     device: stm32f0x,
     resources: {
         static CAN: stm32f0x::CAN;
+        static USART2: stm32f0x::USART2;
+        static GPIOA: stm32f0x::GPIOA;
+        static POWER_LED: PowerLed;
+        static GAME_LED: GameLed;
+        static CONN_LED: ConnectionLed;
+        static STATUS_LED: StatusLed;
         static EXTI: stm32f0x::EXTI;
     },
 
     tasks: {
+        CEC_CAN:
+        {
+            path: can_handler,
+            priority: 3,
+            resources: [USART2, GPIOA, CAN, POWER_LED, GAME_LED, CONN_LED, STATUS_LED]
+        },
          EXTI2_3:
         {
             path: button_clicked,
@@ -55,6 +71,22 @@ fn init(p: init::Peripherals) -> init::LateResources
     */
     let ext_clock = ExternalClock;
     ext_clock.init(&p.device.RCC);
+
+    let pwr_led = PowerLed;
+    pwr_led.init(&p.device.GPIOA, &p.device.RCC);
+    pwr_led.toggle(&p.device.GPIOA);
+
+    let game_led = GameLed;
+    game_led.init(&p.device.GPIOA, &p.device.RCC);
+    game_led.toggle(&p.device.GPIOA);
+
+    let conn_led = ConnectionLed;
+    conn_led.init(&p.device.GPIOA, &p.device.RCC);
+    conn_led.toggle(&p.device.GPIOA);
+
+    let status_led = StatusLed;
+    status_led.init(&p.device.GPIOA, &p.device.RCC);
+    status_led.toggle(&p.device.GPIOA);
 
     BUTTON.init(&p.device.GPIOA, &p.device.RCC, &p.device.SYSCFG_COMP, &p.device.EXTI);
 
@@ -103,17 +135,23 @@ fn init(p: init::Peripherals) -> init::LateResources
         error_warning: false,
         fifo1_overrun: false,
         fifo1_full: false,
-        fifo1_message_pending: false,
+        fifo1_message_pending: true,
         fifo0_overrun: false,
         fifo0_full: false,
-        fifo0_message_pending: false,
+        fifo0_message_pending: true,
         transmit_mailbox_empty: false,
     };
     can_connector.canit(canterups);
     }
-    
+
     init::LateResources {
+    POWER_LED: pwr_led,
+    GAME_LED: game_led,
+    STATUS_LED: status_led,
+    CONN_LED: conn_led,
     CAN: p.device.CAN,
+    USART2: p.device.USART2,
+    GPIOA: p.device.GPIOA,
     EXTI: p.device.EXTI,
     }
 }
@@ -125,21 +163,56 @@ fn idle() -> !
     }
 }
 
+fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
+    USART2: usart2,
+    GPIOA: gpioa,
+    CAN: mut can,
+    POWER_LED: pwr_led,
+    GAME_LED: game_led,
+    CONN_LED: conn_led,
+    STATUS_LED: stat_led,
+}: CEC_CAN::Resources
+) {
+    let mut message_received: CanMessage = CanMessage::new();
+    can.claim_mut(t, |canen, _t| {
+        let can_connector = Canust(canen);
+        match can_connector.receive() {
+            Ok(message) => message_received = message,
+            Err(_) => unimplemented!(),
+        }
+        handle_lights(message_received, &*pwr_led, &*game_led, &*stat_led, &*conn_led, &gpioa); // Sends the received message to the handle_lights method.
+    });
+}
+
+/*
+Will match on the standard id of the message and toggle the leds depending on what ID.
+*/
+fn handle_lights( message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, stat_led: &StatusLed, conn_led: &ConnectionLed, gpioa: &stm32f0x::GPIOA) {
+    match message.stid {
+        POWER_LED_ID => { pwr_led.toggle(&gpioa) },
+        GAME_LED_ID => { game_led.toggle(&gpioa) },
+        CONNECTION_LED_ID => { conn_led.toggle(&gpioa) },
+        STATUS_LED_ID => { stat_led.toggle(&gpioa) },
+        _ => { unimplemented!() },
+    }
+}
+
 fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
     CAN: mut can,
     EXTI: exti,
 }: EXTI2_3::Resources
 ) {
     BUTTON.reset(&*exti);
-    can.claim_mut(t, |canen, _t| { // Claim can in case of usage in other methods
-        let can_connector = Canust(canen); // The Canust object with the transmit method
-        let mut message = CanMessage::new(); // Create new message
-        message.stid = GAME_LED_ID; // Setting standard id to 2046
-        message.dlc = 1; // Setting DLC to 1.
+    can.claim_mut(t, |canen, __t| {
+        let can_connector = Canust(canen);
+        let mut message = CanMessage::new();
+        message.stid = GAME_LED_ID;
+        message.dlc = 2;
         message.dataset_0[0] = 50;
-        match can_connector.transmit(message) { // match the transmit to check if a transmit mailbox was available
-            Ok(mbx) => {} // Transmit OK
-            Err(mbx) => {}, // Transmit mailboxes are full
+        message.dataset_0[1] = 60;
+        match can_connector.transmit(message) {
+            Ok(mbx) => {}
+            Err(mbx) => {},
         }
     });
 }

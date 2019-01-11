@@ -207,8 +207,9 @@ fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
         let can_connector = Canust(canen);
         let mut message = CanMessage::new();
         message.stid = GAME_LED_ID;
-        message.dlc = 1;
+        message.dlc = 2;
         message.dataset_0[0] = 50;
+        message.dataset_0[1] = 60;
         match can_connector.transmit(message) {
             Ok(mbx) => {}
             Err(mbx) => {},

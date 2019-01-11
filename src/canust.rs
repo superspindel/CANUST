@@ -119,8 +119,8 @@ macro_rules! transmit_mailbox {
                 can_reg.$tiXr.write(|w| unsafe { w.stid().bits(message.stid) });
                 if message.rtr.is_some() { can_reg.$tiXr.modify(|_, w| w.rtr().bit(message.rtr.unwrap())); }
                 if message.exid.is_some() { can_reg.$tiXr.modify(|_, w| unsafe { w.exid().bits(message.exid.unwrap()).ide().bit(true) }); }
-                can_reg.$tdlXr.modify(|_, w| unsafe { w.bits(u32::from_be_bytes(message.dataset_0)) });
-                if message.dlc > 4 { can_reg.$tdhXr.modify(|_, w| unsafe { w.bits(u32::from_be_bytes(message.dataset_1.unwrap())) }) };
+                can_reg.$tdlXr.modify(|_, w| unsafe { w.bits(u32::from_le_bytes(message.dataset_0)) });
+                if message.dlc > 4 { can_reg.$tdhXr.modify(|_, w| unsafe { w.bits(u32::from_le_bytes(message.dataset_1.unwrap())) }) };
                 can_reg.$tiXr.modify(|_, w| w.txrq().set_bit());
                 while can_reg.$tiXr.read().txrq().bit_is_set() { }
             }
