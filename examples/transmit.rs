@@ -130,15 +130,15 @@ fn button_clicked(t: &mut Threshold, EXTI2_3::Resources {
 }: EXTI2_3::Resources
 ) {
     BUTTON.reset(&*exti);
-        can.claim_mut(t, |canen, _t| {
-            let can_connector = Canust(canen);
-            let mut message = CanMessage::new();
-            message.stid = GAME_LED_ID;
-            message.dlc = 1;
-            message.data0 = 50;
-            match can_connector.transmit(message) {
-                Ok(mbx) => {}
-                Err(mbx) => {},
-            }
-        });
+    can.claim_mut(t, |canen, _t| { // Claim can in case of usage in other methods
+        let can_connector = Canust(canen); // The Canust object with the transmit method
+        let mut message = CanMessage::new(); // Create new message
+        message.stid = GAME_LED_ID; // Setting standard id to 2046
+        message.dlc = 1; // Setting DLC to 1.
+        message.data0 = 50; // Setting data0 to 50
+        match can_connector.transmit(message) { // match the transmit to check if a transmit mailbox was available
+            Ok(mbx) => {} // Transmit OK
+            Err(mbx) => {}, // Transmit mailboxes are full
+        }
+    });
 }

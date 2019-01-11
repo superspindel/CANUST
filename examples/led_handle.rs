@@ -1,3 +1,6 @@
+/*
+Example of turning the LEDs on and off depending on the specific standard id received on the message.
+*/
 #![no_std]
 extern crate cortex_m;
 extern crate cortex_m_rtfm as rtfm;
@@ -16,6 +19,7 @@ use button::BUTTON;
 use external_clock::ExternalClock;
 use canust::{Canust, CanInitParameters, FilterU16List, FilterFifo, CanInitInterrupts, CanMessage, FilterU32Mask, FilterU16Mask};
 
+// The different standard ids that the filter allows.
 const POWER_LED_ID: u16 = 2047;
 const GAME_LED_ID: u16 = 2046;
 const CONNECTION_LED_ID: u16 = 2045;
@@ -175,10 +179,13 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
             Ok(message) => message_received = message,
             Err(_) => unimplemented!(),
         }
-        handle_lights(message_received, &*pwr_led, &*game_led, &*stat_led, &*conn_led, &gpioa);
+        handle_lights(message_received, &*pwr_led, &*game_led, &*stat_led, &*conn_led, &gpioa); // Sends the received message to the handle_lights method.
     });
 }
 
+/*
+Will match on the standard id of the message and toggle the leds depending on what ID.
+*/
 fn handle_lights( message: CanMessage, pwr_led: &PowerLed, game_led: &GameLed, stat_led: &StatusLed, conn_led: &ConnectionLed, gpioa: &stm32f0x::GPIOA) {
     match message.stid {
         POWER_LED_ID => { pwr_led.toggle(&gpioa) },

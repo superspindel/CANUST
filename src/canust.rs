@@ -172,7 +172,7 @@ macro_rules! add_specific_filter {
             let reg1 = filter_settings.get_reg1();
             let reg2 = filter_settings.get_reg2();
 
-            can_reg.can_fmr.modify(|_, w| w.finit().set_bit());
+            can_reg.can_fmr.modify(|_, w| w.finit().set_bit()); // enter filter intialization mode
 
             if mode.is_some() {   can_reg.can_fm1r.modify(|_, w| w.$fbmX().bit(mode.unwrap())) };
             if scale.is_some() {  can_reg.can_fs1r.modify(|_, w| w.$fscX().bit(scale.unwrap())) };
@@ -181,7 +181,7 @@ macro_rules! add_specific_filter {
             if reg2.is_some() {   can_reg.$fXr2.write(|w| unsafe { w.bits(reg2.unwrap()) }) };
             if active.is_some() { can_reg.can_fa1r.modify(|_, w| w.$factX().bit(active.unwrap())) };
             
-            can_reg.can_fmr.modify(|_, w| w.finit().clear_bit());
+            can_reg.can_fmr.modify(|_, w| w.finit().clear_bit()); // enter filter intialization mode
             }
         }
     }
@@ -612,10 +612,10 @@ impl CanFilterTrait for FilterU32List {
         }
     }
     fn get_reg1(&self) -> Option<u32> {
-        self.id1
+        self.id1 << 3
     }
     fn get_reg2(&self) -> Option<u32> {
-        self.id2
+        self.id2 << 3
     }
     fn get_scale(&self) -> Option<bool> {
         Some(true)
@@ -648,10 +648,10 @@ impl CanFilterTrait for FilterU32Mask {
         }
     }
     fn get_reg1(&self) -> Option<u32> {
-        self.id
+        self.id << 3
     }
     fn get_reg2(&self) -> Option<u32> {
-        self.mask
+        self.mask << 3
     }
     fn get_scale(&self) -> Option<bool> {
         Some(true)

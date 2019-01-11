@@ -118,12 +118,12 @@ fn can_handler(t: &mut Threshold, CEC_CAN::Resources {
     CAN: mut can,
 }: CEC_CAN::Resources
 ) {
-    let mut message_received: CanMessage = CanMessage::new();
-    can.claim_mut(t, |canen, _t| {
-        let can_connector = Canust(canen);
-        match can_connector.receive() {
-            Ok(message) => message_received = message,
-            Err(_) => unimplemented!(),
+    let mut message_received: CanMessage = CanMessage::new(); // Unfilled message
+    can.claim_mut(t, |canen, _t| { // Claim in case of the can being used in other methods
+        let can_connector = Canust(canen); // The Canust object with its methods
+        match can_connector.receive() { // Match on receive to see if a message is available
+            Ok(message) => message_received = message, // message_received now contains the message
+            Err(_) => unimplemented!(), // No message available
         }
     });
 }
